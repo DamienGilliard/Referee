@@ -1,3 +1,3 @@
-[submodule "submodules"]
-	path = submodules
-	url = https://github.com/PointCloudLibrary/pcl.git
+[submodule "deps/pcl"]
+	path = deps/pcl
+	url = git@github.com:PointCloudLibrary/pcl.git
