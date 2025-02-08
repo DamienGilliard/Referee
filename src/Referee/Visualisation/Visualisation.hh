@@ -22,6 +22,7 @@ namespace FileBasedVisualisation
         Visualisation() = default;
         ~Visualisation() = default;
         void VisualisePointCloud(const std::string& plyFilePath);
+        void VisualisePointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
     };
 } // FileBasedVisualisation
 
