@@ -4,9 +4,9 @@ namespace Referee::Utils
 {
     namespace Conversions
     {
-        void ConvertLatLonAltToCartesian(double lat, double lon, double alt, double &x, double &y, double &z, CoordinateSystem fromCoordSys, CoordinateSystem toCoordSys)
+        void ConvertLatLonAltToCartesian(double lat, double lon, double alt, double &x, double &y, double &z, CoordinateSystem::CoordinateSystem fromCoordSys, CoordinateSystem::CoordinateSystem toCoordSys)
         {
-            if(fromCoordSys == CoordinateSystem::DEG && toCoordSys == CoordinateSystem::LV95)
+            if(fromCoordSys == CoordinateSystem::CoordinateSystem::DEG && toCoordSys == CoordinateSystem::CoordinateSystem::LV95)
             {
                 // according to https://backend.swisstopo.admin.ch/fileservice/sdweb-docs-prod-swisstopoch-files/files/2023/11/14/7f7bf15b-22e2-48b6-b1ab-6905f81dca8a.pdf
                 // the conversion from WGS84 to CH1903/LV95 is done by the following formulas
@@ -22,7 +22,7 @@ namespace Referee::Utils
 
                 z = alt - 49.55 + 2.73 * lambda + 6.94 * phi;
             }
-            else if (fromCoordSys == CoordinateSystem::DMS && toCoordSys == CoordinateSystem::LV95)
+            else if (fromCoordSys == CoordinateSystem::CoordinateSystem::DMS && toCoordSys == CoordinateSystem::CoordinateSystem::LV95)
             {
                 // convert DMS to DEG
                 double convertedDegrees = int(lat);
@@ -35,7 +35,7 @@ namespace Referee::Utils
                 convertedSeconds = (lon - convertedDegrees - convertedMinutes / 100) * 10000;
                 double lonDeg = convertedDegrees + convertedMinutes/60 + convertedSeconds/3600;
 
-                ConvertLatLonAltToCartesian(latDeg, lonDeg, alt, x, y, z, CoordinateSystem::DEG, CoordinateSystem::LV95);
+                ConvertLatLonAltToCartesian(latDeg, lonDeg, alt, x, y, z, CoordinateSystem::CoordinateSystem::DEG, CoordinateSystem::CoordinateSystem::LV95);
             }
             
         }
