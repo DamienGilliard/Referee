@@ -10,13 +10,17 @@ namespace Referee
 {
     namespace Utils 
     {
-        enum class CoordinateSystem
+        namespace CoordinateSystem
         {
-            UTM,    //Universal Transverse Mercator 
-            DMS,    //Degrees, Minutes, Seconds
-            DEG,    //Decimal Degrees
-            LV95,   //Swiss Grid (translation of UTM)
-        };
+            enum class CoordinateSystem
+            {
+                UTM,    //Universal Transverse Mercator 
+                DMS,    //Degrees, Minutes, Seconds
+                DEG,    //Decimal Degrees
+                LV95,   //Swiss Grid (translation of UTM)
+            };
+        } // CoordinateSystem
+
         /*
         @brief Convert latitude, longitude to Cartesian coordinates (X, Y)
         @param lat Latitude in degrees
@@ -28,9 +32,10 @@ namespace Referee
         */
         namespace Conversions
         {
-                void ConvertLatLonAltToCartesian(double lat, double lon, double alt, double &x, double &y, double &z, CoordinateSystem fromCoordSys, CoordinateSystem toCoordSys);
+                void ConvertLatLonAltToCartesian(double lat, double lon, double alt, double &x, double &y, double &z, CoordinateSystem::CoordinateSystem fromCoordSys, CoordinateSystem::CoordinateSystem toCoordSys);
                 void ConvertECEFToLatLonAlt(double x, double y, double z, double &lat, double &lon, double &alt);
-        }
+        } // Conversions
+
         namespace FileIterators
         {
             /*
@@ -39,6 +44,6 @@ namespace Referee
             @param extension File extension to search for
             */
             std::vector<std::string> GetFilesInDirectory(const std::string& directory, const std::string& extension);
-        }
-    }
+        } // FileIterators
+    } // Utils
 }
