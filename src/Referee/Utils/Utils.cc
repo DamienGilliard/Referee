@@ -46,11 +46,40 @@ namespace Referee::Utils
         {
             std::vector<std::string> files;
             for (const auto& entry : std::filesystem::directory_iterator(directory)) {
-                if (entry.path().extension() == extension) {
-                    files.push_back(entry.path().string());
-                }
+            if (entry.path().extension() == extension) {
+                files.push_back(entry.path().string());
             }
+            }
+            std::sort(files.begin(), files.end());
             return files;
+        }
+    }
+
+    namespace Filtering
+    {
+        void CropPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double minX, double minY, double minZ, double maxX, double maxY, double maxZ)
+        {
+            pcl::CropBox<pcl::PointXYZ> cropBoxFilter;
+            cropBoxFilter.setInputCloud(cloud);
+            Eigen::Vector4f minPoint;
+            minPoint[0] = minX;
+            minPoint[1] = minY;
+            minPoint[2] = minZ;
+            Eigen::Vector4f maxPoint;
+            maxPoint[0] = maxX;
+            maxPoint[1] = maxY;
+            maxPoint[2] = maxZ;
+            cropBoxFilter.setMin(minPoint);
+            cropBoxFilter.setMax(maxPoint);
+            cropBoxFilter.filter(*cloud);
+        }
+
+        void VoxelizePointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double leafSize)
+        {
+            pcl::VoxelGrid<pcl::PointXYZ> sor;
+            sor.setInputCloud(cloud);
+            sor.setLeafSize(leafSize, leafSize, leafSize);
+            sor.filter(*cloud);
         }
     }
 }

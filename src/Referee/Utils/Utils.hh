@@ -5,6 +5,11 @@
 #include <vector>
 #include <filesystem>
 #include <sstream>
+#include <algorithm>
+
+#include <pcl/point_types.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/crop_box.h>
 
 namespace Referee 
 {
@@ -32,8 +37,8 @@ namespace Referee
         */
         namespace Conversions
         {
-                void ConvertLatLonAltToCartesian(double lat, double lon, double alt, double &x, double &y, double &z, CoordinateSystem::CoordinateSystem fromCoordSys, CoordinateSystem::CoordinateSystem toCoordSys);
-                void ConvertECEFToLatLonAlt(double x, double y, double z, double &lat, double &lon, double &alt);
+            void ConvertLatLonAltToCartesian(double lat, double lon, double alt, double &x, double &y, double &z, CoordinateSystem::CoordinateSystem fromCoordSys, CoordinateSystem::CoordinateSystem toCoordSys);
+            void ConvertECEFToLatLonAlt(double x, double y, double z, double &lat, double &lon, double &alt);
         } // Conversions
 
         namespace FileIterators
@@ -45,5 +50,29 @@ namespace Referee
             */
             std::vector<std::string> GetFilesInDirectory(const std::string& directory, const std::string& extension);
         } // FileIterators
+
+        namespace Filtering
+        {
+            /**
+             * @brief Crop a point cloud to a specific bounding box
+             * 
+             * @param cloud Point cloud to crop
+             * @param minX Minimum x value of bounding box
+             * @param minY Minimum y value of bounding box
+             * @param minZ Minimum z value of bounding box
+             * @param maxX Maximum x value of bounding box
+             * @param maxY Maximum y value of bounding box
+             * @param maxZ Maximum z value of bounding box
+             */
+            void CropPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double minX, double minY, double minZ, double maxX, double maxY, double maxZ);
+            
+            /**
+             * @brief Voxelize a point cloud
+             * 
+             * @param cloud Point cloud to voxelize
+             * @param leafSize Leaf size of the voxel grid
+             */
+            void VoxelizePointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double leafSize);
+        } // Filtering
     } // Utils
 }
