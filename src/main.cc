@@ -1,12 +1,14 @@
 #include "Referee.hh"
 
 int main() {
-    std::vector<std::string> geolocationFiles = Referee::Utils::FileIterators::GetFilesInDirectory("../test_files/geolocations", ".csv");
+    std::vector<std::string> geolocationFiles = Referee::Utils::FileIterators::GetFilesInDirectory("../test_files/geolocations", ".petitpoucet");
     std::vector<std::string> plyFileNames = Referee::Utils::FileIterators::GetFilesInDirectory("../test_files/scans", ".ply");
     std::vector<std::vector<double>> translationVectors;
 
-    std::sort(plyFileNames.begin(), plyFileNames.end());
-    std::sort(geolocationFiles.begin(), geolocationFiles.end());
+    if (plyFileNames.size() != geolocationFiles.size()) {
+        std::cerr << "Number of geolocation files and ply files do not match" << std::endl;
+        return 1;
+    }
 
     for (const auto& file : geolocationFiles) {
         std::ifstream fileStream(file);
@@ -48,20 +50,27 @@ int main() {
     pcl::PointCloud<pcl::PointXYZ>::Ptr mergedCloud(new pcl::PointCloud<pcl::PointXYZ>);
 
     for (size_t i = 0; i < plyFileNames.size(); i++) {
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        if (pcl::io::loadPLYFile<pcl::PointXYZ>(plyFileNames[i], *cloud) == -1)
+        pcl::PointCloud<pcl::PointXYZ>::Ptr pointCloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+        std::cout << "Processing file " << plyFileNames[i] << std::endl;
+
+        if (pcl::io::loadPLYFile<pcl::PointXYZ>(plyFileNames[i], *pointCloud) == -1)
         {
             PCL_ERROR("Couldn't read file %s \n", plyFileNames[i].c_str());
             return 0;
         }
-        Referee::Transformations::TranslatePointCloud<pcl::PointXYZ>(cloud, translationVectors[i]);
-        *mergedCloud += *cloud;
+        
+        Referee::Utils::Filtering::CropPointCloud(pointCloud, -25, -25, 0, 25, 25, 8000);
+        Referee::Utils::Filtering::VoxelizePointCloud(pointCloud, 0.05);
+        Referee::Transformations::TranslatePointCloud<pcl::PointXYZ>(pointCloud, translationVectors[i]);
+        
+        *mergedCloud += *pointCloud;
     }
 
     std::string mergedCloudFileName = "../test_files/registred_scans/merged_cloud.ply";
     pcl::io::savePLYFile(mergedCloudFileName, *mergedCloud);
-    FileBasedVisualisation::Visualisation visualisation;
-    visualisation.VisualisePointCloud(mergedCloudFileName);
+    // FileBasedVisualisation::Visualisation visualisation;
+    // visualisation.VisualisePointCloud(mergedCloudFileName);
 
     return 0;
 }
