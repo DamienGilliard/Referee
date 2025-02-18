@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 3.6)
 
-project(Dataforging)
+project(Referee)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+include(ExternalProject)
 
 execute_process(COMMAND git submodule update --init --recursive
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -30,10 +33,7 @@ target_include_directories(${SHARED_LIB_NAME}
 # 3rd party libraries paths
 ###################################
 # pcl
-set(PCL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/pcl")
-
-find_package(PCL 1.8 REQUIRED)
-
+find_package(PCL 1.14 REQUIRED COMPONENTS common io visualization filters segmentation features surface kdtree octree search sample_consensus registration keypoints tracking recognition)
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
@@ -49,4 +49,3 @@ add_executable(${EXECUTABLE_NAME_1}
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cc)       
 
 target_link_libraries(${EXECUTABLE_NAME_1} ${SHARED_LIB_NAME} ${PCL_LIBRARIES})
-target_link_libraries(${SHARED_LIB_NAME} ${PCL_LIBRARIES})
