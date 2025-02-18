@@ -8,7 +8,7 @@ For a clear problem statement that Referee aims to solve, please refer to the [p
 
 Hereunder is an image of the typical initial data that Referee will work with:
 <p align="center">
-  <img src="./images/georeferenced_but_unregistered_point_clouds.png" alt="unregistered georeferenced point clouds" width="75%"/>
+  <img src="./images/georeferenced_but_unregistered_point_clouds.jpeg" alt="unregistered georeferenced point clouds" width="75%"/>
 
 # Installation
 
