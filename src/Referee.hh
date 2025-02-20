@@ -9,3 +9,4 @@
 #include "Referee/Utils/Utils.hh"
 #include "Referee/Visualisation/Visualisation.hh"
 #include "Referee/GeometricTransformations/GeometricTransformation.hh"
+#include "Referee/Mapping/Mapping.hh"

@@ -67,6 +67,23 @@ int main() {
         *mergedCloud += *pointCloud;
     }
 
+    std::vector<std::vector<int>> graph;
+    std::cout << "Creating connectivity graph" << std::endl;
+    Referee::Mapping::CreateConnectivityGraph(translationVectors, 3, 100, graph);
+    std::cout << "Connectivity graph created" << std::endl;
+
+    std::cout << "____________________Connectivity graph:____________________" << std::endl;
+    for(int i = 0; i < graph.size(); i++)
+    {
+        std::cout << "Node " << i << " is connected to nodes: ";
+        for(int j = 0; j < graph[i].size(); j++)
+        {
+            std::cout << graph[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << "___________________________________________________________" << std::endl;
+
     std::string mergedCloudFileName = "../test_files/registred_scans/merged_cloud.ply";
     pcl::io::savePLYFile(mergedCloudFileName, *mergedCloud);
     // FileBasedVisualisation::Visualisation visualisation;
