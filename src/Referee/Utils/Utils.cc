@@ -45,10 +45,12 @@ namespace Referee::Utils
         std::vector<std::string> GetFilesInDirectory(const std::string& directory, const std::string& extension)
         {
             std::vector<std::string> files;
-            for (const auto& entry : std::filesystem::directory_iterator(directory)) {
-            if (entry.path().extension() == extension) {
-                files.push_back(entry.path().string());
-            }
+            for (const auto& entry : std::filesystem::directory_iterator(directory)) 
+            {
+                if (entry.path().extension() == extension) 
+                {
+                    files.push_back(entry.path().string());
+                }
             }
             std::sort(files.begin(), files.end());
             return files;
@@ -57,9 +59,9 @@ namespace Referee::Utils
 
     namespace Filtering
     {
-        void CropPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double minX, double minY, double minZ, double maxX, double maxY, double maxZ)
+        void CropPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, double minX, double minY, double minZ, double maxX, double maxY, double maxZ)
         {
-            pcl::CropBox<pcl::PointXYZ> cropBoxFilter;
+            pcl::CropBox<pcl::PointXYZRGB> cropBoxFilter;
             cropBoxFilter.setInputCloud(cloud);
             Eigen::Vector4f minPoint;
             minPoint[0] = minX;
@@ -74,9 +76,9 @@ namespace Referee::Utils
             cropBoxFilter.filter(*cloud);
         }
 
-        void VoxelizePointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double leafSize)
+        void VoxelizePointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, double leafSize)
         {
-            pcl::VoxelGrid<pcl::PointXYZ> sor;
+            pcl::VoxelGrid<pcl::PointXYZRGB> sor;
             sor.setInputCloud(cloud);
             sor.setLeafSize(leafSize, leafSize, leafSize);
             sor.filter(*cloud);
