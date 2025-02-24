@@ -8,7 +8,7 @@ For a clear problem statement that Referee aims to solve, please refer to the [p
 
 Hereunder is an image of the typical initial data that Referee will work with. It is a top view of roughly aligned but not fully registred forest point clouds:
 <p align="center">
-  <img src="./images/top_view_forest_point_cloud.png" alt="unregistered georeferenced point clouds" width="75%"/>
+  <img src="./images/top_view_forest_point_cloud.png" alt="unregistered georeferenced point clouds" width="95%"/>
 
 # Installation
 
