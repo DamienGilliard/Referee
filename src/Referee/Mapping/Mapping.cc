@@ -8,10 +8,13 @@ namespace Referee::Mapping
         {
             for(int j = 0; j < __mappingMatrix[i].size(); j++)
             {
+                std::cout << "matrix " << i << " " << j << std::endl;
                 std::cout << __mappingMatrix[i][j] << " ";
+                std::cout << std::endl;
             }
             std::cout << std::endl;
         }
+        std::cout << std::endl;
     }
 
     void CreateConnectivityMatrix(std::vector<std::vector<double>> geolocations, int knn, double maxDistance, std::vector<std::vector<int>>& matrix)

@@ -80,7 +80,9 @@ int main()
                 Referee::Transformations::TranslatePointCloud<pcl::PointXYZ>(sourcePointCloud, translationVectors[matrix[i][j]]);
                 Eigen::Matrix4f transformationMatrix = Referee::Mapping::ComputePairwiseTransformation(targetPointCloud, sourcePointCloud, Referee::Mapping::TransformationComputationMethod::GlobalMatch);
                 std::cout << "Transformation matrix: " << std::endl << transformationMatrix << std::endl;
+                Eigen::Matrix4f transformationMatrixInv = transformationMatrix.inverse();
                 mappingMatrix.SetTransformationMatrix(i, matrix[i][j], transformationMatrix);
+                mappingMatrix.SetTransformationMatrix(matrix[i][j], i, transformationMatrixInv);
             }
         }
     }
