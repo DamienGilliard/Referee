@@ -1,6 +1,7 @@
 #include "Referee.hh"
 
-int main() {
+int main()
+{
     std::vector<std::string> geolocationFiles = Referee::Utils::FileIterators::GetFilesInDirectory("../test_files/geolocations", ".petitpoucet");
     std::vector<std::string> plyFileNames = Referee::Utils::FileIterators::GetFilesInDirectory("../test_files/scans", ".ply");
     std::vector<std::vector<double>> translationVectors;
@@ -31,74 +32,60 @@ int main() {
         }
     }
 
-    std::vector<double> meanTranslationVector = {0, 0, 0};
-    for (const auto& translationVector : translationVectors) {
-        meanTranslationVector[0] += translationVector[0];
-        meanTranslationVector[1] += translationVector[1];
-        meanTranslationVector[2] += translationVector[2];
-    }
-    meanTranslationVector[0] /= translationVectors.size();
-    meanTranslationVector[1] /= translationVectors.size();
-    meanTranslationVector[2] /= translationVectors.size();
+    Referee::Mapping::MappingMatrix mappingMatrix(plyFileNames.size());
 
-    for (auto& translationVector : translationVectors) {
-        translationVector[0] -= meanTranslationVector[0];
-        translationVector[1] -= meanTranslationVector[1];
-        translationVector[2] -= meanTranslationVector[2];
-    }
+    std::vector<double> meanTranslation =Referee::Transformations::RecenterTranslationVectors(translationVectors);
+    std::cout << "Mean translation vector: " << meanTranslation[0] << " " << meanTranslation[1] << " " << meanTranslation[2] << std::endl;
+    std::vector<std::vector<int>> matrix;
+    Referee::Mapping::CreateConnectivityMatrix(translationVectors, 2, 30, matrix);
 
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr mergedCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-
-    int count = 0;
-    int totCount = plyFileNames.size();
-
-    for (size_t i = 0; i < plyFileNames.size(); i++) {
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-
-        std::cout << "Processing file " << plyFileNames[i] << std::endl;
-
-        if (pcl::io::loadPLYFile<pcl::PointXYZRGB>(plyFileNames[i], *pointCloud) == -1)
-        {
-            PCL_ERROR("Couldn't read file %s \n", plyFileNames[i].c_str());
-            return 0;
-        }
-        
-        Referee::Utils::Filtering::CropPointCloud(pointCloud, -25, -25, 0, 25, 25, 8000);
-        Referee::Utils::Filtering::VoxelizePointCloud(pointCloud, 0.05);
-        Referee::Transformations::TranslatePointCloud<pcl::PointXYZRGB>(pointCloud, translationVectors[i]);
-
-        for (int i = 0; i < pointCloud->points.size(); i++) {
-            pointCloud->points[i].r = 255 * (double(count)/double(totCount)); // Red channel
-            pointCloud->points[i].g = 255 - (255 * (double(count)/double(totCount))); // Green channel
-            pointCloud->points[i].b = 0; // Blue channel
-        }
-
-        count++;
-        
-        *mergedCloud += *pointCloud;
-    }
-
-    std::vector<std::vector<int>> graph;
-    std::cout << "Creating connectivity graph" << std::endl;
-    Referee::Mapping::CreateConnectivityGraph(translationVectors, 3, 30, graph);
-    std::cout << "Connectivity graph created" << std::endl;
-
-    std::cout << "____________________Connectivity graph:____________________" << std::endl;
-    for(int i = 0; i < graph.size(); i++)
+    std::cout << "____________________Connectivity matrix:____________________" << std::endl;
+    for(int i = 0; i < matrix.size(); i++)
     {
         std::cout << "Node " << i << " is connected to nodes: ";
-        for(int j = 0; j < graph[i].size(); j++)
+        for(int j = 0; j < matrix[i].size(); j++)
         {
-            std::cout << graph[i][j] << " ";
+            std::cout << matrix[i][j] << " ";
         }
         std::cout << std::endl;
     }
     std::cout << "___________________________________________________________" << std::endl;
 
-    std::string mergedCloudFileName = "../test_files/registred_scans/merged_cloud.ply";
-    pcl::io::savePLYFile(mergedCloudFileName, *mergedCloud);
-    // FileBasedVisualisation::Visualisation visualisation;
-    // visualisation.VisualisePointCloud(mergedCloudFileName);
+    int count = 0;
+    int totCount = plyFileNames.size();
+
+    // iterate through all other point clouds, register them and merge them to the reference
+    for (int i = 1; i < plyFileNames.size(); i++) 
+    {
+        // read i-th point cloud
+        pcl::PointCloud<pcl::PointXYZ>::Ptr targetPointCloud(new pcl::PointCloud<pcl::PointXYZ>);
+        if (pcl::io::loadPLYFile<pcl::PointXYZ>(plyFileNames[i], *targetPointCloud) == -1)
+        {
+            PCL_ERROR("Couldn't read file %s \n", plyFileNames[i].c_str());
+            return 0;
+        }
+        Referee::Transformations::TranslatePointCloud<pcl::PointXYZ>(targetPointCloud, translationVectors[i]);
+
+        // load the j-th point cloud
+        for(int j = 0; j < matrix[i].size(); j++)
+        {
+            if (matrix[i][j] < i)
+            {
+                pcl::PointCloud<pcl::PointXYZ>::Ptr sourcePointCloud(new pcl::PointCloud<pcl::PointXYZ>);
+                if (pcl::io::loadPLYFile<pcl::PointXYZ>(plyFileNames[matrix[i][j]], *sourcePointCloud) == -1)
+                {
+                    PCL_ERROR("Couldn't read file %s \n", plyFileNames[matrix[i][j]].c_str());
+                    return 0;
+                }
+                Referee::Transformations::TranslatePointCloud<pcl::PointXYZ>(sourcePointCloud, translationVectors[matrix[i][j]]);
+                Eigen::Matrix4f transformationMatrix = Referee::Mapping::ComputePairwiseTransformation(targetPointCloud, sourcePointCloud, Referee::Mapping::TransformationComputationMethod::GlobalMatch);
+                std::cout << "Transformation matrix: " << std::endl << transformationMatrix << std::endl;
+                mappingMatrix.SetTransformationMatrix(i, matrix[i][j], transformationMatrix);
+            }
+        }
+    }
+
+    mappingMatrix.PrintMatrix();
 
     return 0;
 }
