@@ -59,9 +59,9 @@ namespace Referee::Utils
 
     namespace Filtering
     {
-        void CropPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, double minX, double minY, double minZ, double maxX, double maxY, double maxZ)
+        void CropPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double minX, double minY, double minZ, double maxX, double maxY, double maxZ)
         {
-            pcl::CropBox<pcl::PointXYZRGB> cropBoxFilter;
+            pcl::CropBox<pcl::PointXYZ> cropBoxFilter;
             cropBoxFilter.setInputCloud(cloud);
             Eigen::Vector4f minPoint;
             minPoint[0] = minX;
@@ -76,12 +76,30 @@ namespace Referee::Utils
             cropBoxFilter.filter(*cloud);
         }
 
-        void VoxelizePointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, double leafSize)
+        void VoxelizePointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double leafSize)
         {
-            pcl::VoxelGrid<pcl::PointXYZRGB> sor;
+            pcl::VoxelGrid<pcl::PointXYZ> sor;
             sor.setInputCloud(cloud);
             sor.setLeafSize(leafSize, leafSize, leafSize);
             sor.filter(*cloud);
+        }
+    }
+
+    namespace Coloring
+    {
+        void ColorPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int r, int g, int b)
+        {
+            for(auto& point : *cloud)
+            {
+                pcl::PointXYZRGB coloredPoint;
+                coloredPoint.x = point.x;
+                coloredPoint.y = point.y;
+                coloredPoint.z = point.z;
+                coloredPoint.r = r;
+                coloredPoint.g = g;
+                coloredPoint.b = b;
+                coloredCloud->push_back(coloredPoint);
+            }
         }
     }
 }

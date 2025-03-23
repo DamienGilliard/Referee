@@ -64,7 +64,7 @@ namespace Referee
              * @param maxY Maximum y value of bounding box
              * @param maxZ Maximum z value of bounding box
              */
-            void CropPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, double minX, double minY, double minZ, double maxX, double maxY, double maxZ);
+            void CropPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double minX, double minY, double minZ, double maxX, double maxY, double maxZ);
             
             /**
              * @brief Voxelize a point cloud
@@ -72,7 +72,23 @@ namespace Referee
              * @param cloud Point cloud to voxelize
              * @param leafSize Leaf size of the voxel grid
              */
-            void VoxelizePointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, double leafSize);
+            void VoxelizePointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double leafSize);
         } // Filtering
+
+        namespace Coloring
+        {
+            /**
+             * @brief Color a point cloud based on a specific color
+             * 
+             * @param coloredCloud Point cloud to color
+             * @param cloud Point cloud to extract coordinates from
+             * @param r Red value of the color
+             * @param g Green value of the color
+             * @param b Blue value of the color
+             * @return pcl::PointCloud<pcl::PointXYZRGB>::Ptr Colored point cloud
+             */
+            
+            void ColorPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int r, int g, int b);
+        } // Coloring
     } // Utils
 }
