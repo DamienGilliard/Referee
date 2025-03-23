@@ -27,6 +27,14 @@ namespace Referee::Mapping
             {
                 __mappingMatrix[i].resize(numPointClouds);
             }
+
+            for(int i = 0; i < numPointClouds; i++)
+            {
+                for(int j = 0; j < numPointClouds; j++)
+                {
+                    __mappingMatrix[i][j] = Eigen::Matrix4f::Zero();
+                }
+            }
         }
 
         /**
