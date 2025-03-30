@@ -59,6 +59,12 @@ namespace Referee::Mapping
             __mappingMatrix[i][j] = transformationMatrix;
         }
 
+        /**
+         * @brief Calculate the mean transformation matrix per point cloud (i.e. the mean transformation matrix along one row of the mapping matrix)
+         */
+        void CalculateMeanTransformationMatrices();
+
+
         std::vector<std::vector<int>> GetConnectivityMatrix();
 
         /**
@@ -66,11 +72,21 @@ namespace Referee::Mapping
          */
         void PrintMatrix();
 
+        /**
+         * @brief Print the mean transformation matrices to the console
+         */
+        void PrintMeanMatrices();
+
     private:
         /**
          * @brief Mapping matrix between the point clouds, where each element is the transformation matrix between two point clouds
          */
         std::vector<std::vector<Eigen::Matrix4f>> __mappingMatrix;
+
+        /**
+         * @brief Mean transformation matrix per point cloud
+         */
+        std::vector<Eigen::Matrix4f> __meanTransformationMatrices;
     };
     
 

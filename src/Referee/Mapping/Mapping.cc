@@ -17,6 +17,55 @@ namespace Referee::Mapping
         std::cout << std::endl;
     }
 
+    void MappingMatrix::CalculateMeanTransformationMatrices()
+    {
+        this->__meanTransformationMatrices.resize(__mappingMatrix.size());
+        for(int i = 0; i < __mappingMatrix.size(); i++)
+        {
+            Eigen::Vector3f meanTranslation = Eigen::Vector3f::Zero();
+            double meanXRotation = 0;
+            double meanYRotation = 0;
+            double meanZRotation = 0;
+            int nonZeroMatrices = 0;
+            for(int j = 0; j < __mappingMatrix[i].size(); j++)
+            {
+                if(__mappingMatrix[i][j].isZero(0))
+                {
+                    continue;
+                }
+                meanTranslation += __mappingMatrix[i][j].block<3, 1>(0, 3);
+                Eigen::Matrix3f rotationMatrix = __mappingMatrix[i][j].block<3, 3>(0, 0);
+                double xRotation = atan2(rotationMatrix(2, 1), rotationMatrix(2, 2));   
+                double yRotation = atan2(-rotationMatrix(2, 0), sqrt(rotationMatrix(2, 1) * rotationMatrix(2, 1) + rotationMatrix(2, 2) * rotationMatrix(2, 2)));
+                double zRotation = atan2(rotationMatrix(1, 0), rotationMatrix(0, 0));
+                meanXRotation += xRotation;
+                meanYRotation += yRotation;
+                meanZRotation += zRotation;
+                nonZeroMatrices++;
+            }
+            meanTranslation /= nonZeroMatrices;
+            meanXRotation /= nonZeroMatrices;
+            meanYRotation /= nonZeroMatrices;
+            meanZRotation /= nonZeroMatrices;
+
+            Eigen::Matrix4f meanTransformationMatrix = Eigen::Matrix4f::Identity();
+            meanTransformationMatrix.block<3, 1>(0, 3) = meanTranslation;
+            Eigen::Matrix3f rotationMatrix = Eigen::Matrix3f::Identity();
+            rotationMatrix = Eigen::AngleAxisf(meanXRotation, Eigen::Vector3f::UnitX()) * Eigen::AngleAxisf(meanYRotation, Eigen::Vector3f::UnitY()) * Eigen::AngleAxisf(meanZRotation, Eigen::Vector3f::UnitZ());
+            meanTransformationMatrix.block<3, 3>(0, 0) = rotationMatrix;
+            this->__meanTransformationMatrices[i] = meanTransformationMatrix;
+        }
+    }
+
+    void MappingMatrix::PrintMeanMatrices()
+    {
+        for(int i = 0; i < this->__meanTransformationMatrices.size(); i++)
+        {
+            std::cout << "Mean transformation matrix for point cloud " << i << std::endl;
+            std::cout << __meanTransformationMatrices[i] << std::endl;
+        }
+    }
+
     void CreateConnectivityMatrix(std::vector<std::vector<double>> geolocations, int knn, double maxDistance, std::vector<std::vector<int>>& matrix)
     {
         std::vector<std::vector<double>> distances;
