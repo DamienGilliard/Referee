@@ -93,6 +93,8 @@ int main()
     }
 
     mappingMatrix.PrintMatrix();
+    mappingMatrix.CalculateMeanTransformationMatrices();
+    mappingMatrix.PrintMeanMatrices();
 
     return 0;
 }
