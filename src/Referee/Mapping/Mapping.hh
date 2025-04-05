@@ -2,7 +2,10 @@
 #include <vector>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/registration/icp.h>
 #include <Eigen/Dense>
+#include <Eigen/Geometry>
+#include <unsupported/Eigen/MatrixFunctions>
 #include "../../3rd_party/GlobalMatch/code/global_match/stem_mapping.h"
 #include "../../3rd_party/GlobalMatch/code/global_match/stem_matching.h"
 
@@ -32,7 +35,7 @@ namespace Referee::Mapping
             {
                 for(int j = 0; j < numPointClouds; j++)
                 {
-                    __mappingMatrix[i][j] = Eigen::Matrix4f::Zero();
+                    __mappingMatrix[i][j] = Eigen::Matrix4d::Zero();
                 }
             }
         }
@@ -41,9 +44,9 @@ namespace Referee::Mapping
          * @brief Getter of the transformation matrix between two point clouds
          * @param i Index of the first point cloud
          * @param j Index of the second point cloud
-         * @return Eigen::Matrix4f Transformation matrix between the two point clouds
+         * @return Eigen::Matrix4d Transformation matrix between the two point clouds
          */
-        Eigen::Matrix4f GetTransformationMatrix(int i, int j)
+        Eigen::Matrix4d GetTransformationMatrix(int i, int j)
         {
             return __mappingMatrix[i][j];
         }
@@ -54,7 +57,7 @@ namespace Referee::Mapping
          * @param j Index of the second point cloud
          * @param transformationMatrix Transformation matrix between the two point clouds
          */
-        void SetTransformationMatrix(int i, int j, Eigen::Matrix4f transformationMatrix)
+        void SetTransformationMatrix(int i, int j, Eigen::Matrix4d transformationMatrix)
         {
             __mappingMatrix[i][j] = transformationMatrix;
         }
@@ -81,12 +84,12 @@ namespace Referee::Mapping
         /**
          * @brief Mapping matrix between the point clouds, where each element is the transformation matrix between two point clouds
          */
-        std::vector<std::vector<Eigen::Matrix4f>> __mappingMatrix;
+        std::vector<std::vector<Eigen::Matrix4d>> __mappingMatrix;
 
         /**
          * @brief Mean transformation matrix per point cloud
          */
-        std::vector<Eigen::Matrix4f> __meanTransformationMatrices;
+        std::vector<Eigen::Matrix4d> __meanTransformationMatrices;
     };
     
 
@@ -110,11 +113,33 @@ namespace Referee::Mapping
         GlobalMatch,
     };
 
+    enum RefinementMethod
+    {
+        ICPNormals,
+    };
+
     /**
      * @brief Computes the 4x4 transformation matrix that transforms the source point cloud to the target point cloud following a given method
      * @param source the source point cloud used as reference
      * @param target the point cloud we want to transform
      * @param method the method used in the computation.  
     */
-    Eigen::Matrix4f ComputePairwiseTransformation(pcl::PointCloud<pcl::PointXYZ>::Ptr source, pcl::PointCloud<pcl::PointXYZ>::Ptr target, TransformationComputationMethod method);
+    Eigen::Matrix4d ComputePairwiseTransformation(pcl::PointCloud<pcl::PointNormal>::Ptr source, pcl::PointCloud<pcl::PointNormal>::Ptr target, TransformationComputationMethod method);
+
+    /**
+     * @brief Refines the pairwise transformation using a refinement method
+     * @param source the source point cloud used as reference
+     * @param target the point cloud we want to transform
+     * @param method the method used in the computation. Currently only ICP with normals is supported
+     * @param maxCorrespondenceDistance maximum correspondence distance for the ICP algorithm
+     */
+    Eigen::Matrix4d RefinePairwiseTransformation(pcl::PointCloud<pcl::PointNormal>::Ptr source, pcl::PointCloud<pcl::PointNormal>::Ptr target, RefinementMethod method, double maxCorrespondenceDistance);
+
+    /**
+     * @brief Computes the rotation axis and translation along this axis. This relies on the Chasles theorem. 
+     * @param transformationMatrix the transformation matrix
+     * @return the rotation axis of the transformation matrix (first vector) and the translation along this axis (second vector)
+     * @note The rotation axis norm is the rotation angle in radians.
+     */
+    std::vector<Eigen::Vector3d> ComputeScrewAxis(Eigen::Matrix4d transformationMatrix);
 }
