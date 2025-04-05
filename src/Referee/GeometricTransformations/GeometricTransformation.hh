@@ -39,12 +39,12 @@ namespace Referee::Transformations
      * @param transformationMatrix Transformation matrix to transform the point cloud by
      */
     template<typename PointT>
-    void TransformPointCloud(typename pcl::PointCloud<PointT>::Ptr cloud, Eigen::Matrix4f transformationMatrix)
+    void TransformPointCloud(typename pcl::PointCloud<PointT>::Ptr cloud, Eigen::Matrix4d transformationMatrix)
     {
         for (auto& point : *cloud)
         {
-            Eigen::Vector4f pointVector(point.x, point.y, point.z, 1);
-            Eigen::Vector4f transformedPoint = transformationMatrix * pointVector;
+            Eigen::Vector4d pointVector(point.x, point.y, point.z, 1);
+            Eigen::Vector4d transformedPoint = transformationMatrix * pointVector;
             point.x = transformedPoint[0];
             point.y = transformedPoint[1];
             point.z = transformedPoint[2];
