@@ -2,6 +2,37 @@
 
 namespace Referee::Utils
 {
+    namespace CoordinateSystem
+    {
+        void PointCloudGeolocation::WriteToGeojson()
+        {
+            std::ofstream geojsonFile(fileName + ".geojson");
+            if (geojsonFile.is_open())
+            {
+                geojsonFile << "{\n";
+                geojsonFile << "  \"type\": \"FeatureCollection\",\n";
+                geojsonFile << "  \"features\": [\n";
+                geojsonFile << "    {\n";
+                geojsonFile << "      \"type\": \"Feature\",\n";
+                geojsonFile << "      \"geometry\": {\n";
+                geojsonFile << "        \"type\": \"Point\",\n";
+                geojsonFile << "        \"coordinates\": [" << lon << ", " << lat << ", " << alt << "]\n";
+                geojsonFile << "      },\n";
+                geojsonFile << "      \"properties\": {\n";
+                geojsonFile << "        \"coordinate_system\": \"" << static_cast<int>(coordSys) << "\"\n"; // Store enum as int
+                geojsonFile << "      }\n";
+                geojsonFile << "    }\n";
+                geojsonFile << "  ]\n";
+                geojsonFile << "}\n";
+
+                geojsonFile.close();
+            }
+            else
+            {
+                std::cerr << "Unable to open file: " + fileName + ".geojson" << std::endl;
+            }
+        }
+    } // CoordinateSystem
     namespace Conversions
     {
         void ConvertLatLonAltToCartesian(double lat, double lon, double alt, double &x, double &y, double &z, CoordinateSystem::CoordinateSystem fromCoordSys, CoordinateSystem::CoordinateSystem toCoordSys)
@@ -100,6 +131,20 @@ namespace Referee::Utils
                 coloredPoint.b = b;
                 coloredCloud->push_back(coloredPoint);
             }
+        }
+    }
+    namespace NormalCalculation
+    {
+        void CalculateNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, pcl::PointCloud<pcl::Normal>::Ptr normals, int k)
+        {
+            std::cout << "Calculating normals..." << std::endl;
+            pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimation;
+            normalEstimation.setInputCloud(cloud);
+            pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
+            normalEstimation.setSearchMethod(tree);
+            normalEstimation.setKSearch(k);
+            normalEstimation.compute(*normals);
+            std::cout << "Normals calculated." << std::endl;
         }
     }
 }
