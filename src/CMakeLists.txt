@@ -55,12 +55,15 @@ target_link_libraries(${EXECUTABLE_NAME_1} ${SHARED_LIB_NAME})
 # Unit tests
 #############
 
+set(UNIT_TEST_EXECUTABLE_NAME_TRANSLATIONS test_translations)
+set(UNIT_TEST_EXECUTABLE_NAME_MEAN_TRANSFORMATION test_mean_transformation)
+
 enable_testing()
 include(CTest)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tests)
 
 add_custom_target(run_tests
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
-    DEPENDS ${UNIT_TEST_EXECUTABLE_NAME})
+    DEPENDS ${UNIT_TEST_EXECUTABLE_NAME_TRANSLATIONS} ${UNIT_TEST_EXECUTABLE_NAME_MEAN_TRANSFORMATION}) 
 
-add_dependencies(${EXECUTABLE_NAME_1} run_tests) # Run the tests every time the executable is built
+add_dependencies(${EXECUTABLE_NAME_1} run_tests) 
