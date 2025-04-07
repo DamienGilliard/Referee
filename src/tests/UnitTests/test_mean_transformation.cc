@@ -27,7 +27,7 @@ int main()
 
     mappingMatrix.CalculateMeanTransformationMatrices();
 
-    if(mappingMatrix.GetMeanTransformationMatrix(0).isApprox(Eigen::Matrix4d::Identity(), 1e-6) && mappingMatrix.GetMeanTransformationMatrix(1).isApprox(inverseTransformationMatrix, 1e-6))
+    if(mappingMatrix.GetMeanTransformationMatrix(0).isApprox(Eigen::Matrix4d::Identity(), 1e-6) && mappingMatrix.GetMeanTransformationMatrix(1).isApprox(halfInverseTransformationMatrix, 1e-6))
     {
         std::cout << "Test passed: Mean transformation matrices are correct" << std::endl;
         return 0;
