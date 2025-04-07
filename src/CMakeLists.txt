@@ -58,3 +58,9 @@ target_link_libraries(${EXECUTABLE_NAME_1} ${SHARED_LIB_NAME})
 enable_testing()
 include(CTest)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tests)
+
+add_custom_target(run_tests
+    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+    DEPENDS ${UNIT_TEST_EXECUTABLE_NAME})
+
+add_dependencies(${EXECUTABLE_NAME_1} run_tests) # Run the tests every time the executable is built
