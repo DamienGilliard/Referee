@@ -66,7 +66,7 @@ namespace Referee::Mapping
         }
     }
 
-    void CreateConnectivityMatrix(std::vector<std::vector<double>> geolocations, int knn, double maxDistance, std::vector<std::vector<int>>& matrix)
+    void CreateConnectivityMatrix(std::vector<Eigen::Vector3d> geolocations, int knn, double maxDistance, std::vector<std::vector<int>>& matrix)
     {
         std::vector<std::vector<double>> distances;
         std::vector<std::vector<int>> totalMatrix;
@@ -81,7 +81,7 @@ namespace Referee::Mapping
                 if(i != j)
                 {
                     // Calculate distance between geolocations
-                    double distance = std::pow(geolocations[i][0] - geolocations[j][0], 2) + std::pow(geolocations[i][1] - geolocations[j][1], 2) + std::pow(geolocations[i][2] - geolocations[j][2], 2);
+                    double distance = std::pow(geolocations[i].x() - geolocations[j].x(), 2) + std::pow(geolocations[i].y() - geolocations[j].y(), 2) + std::pow(geolocations[i].z() - geolocations[j].z(), 2);
                     distance = sqrt(distance);
                     distances[i].push_back(distance);
                     totalMatrix[i].push_back(j);

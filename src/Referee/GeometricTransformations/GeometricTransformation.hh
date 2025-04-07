@@ -15,16 +15,11 @@ namespace Referee::Transformations
      * @param translationVector Vector to translate the point cloud by
      */
     template<typename PointT>
-    void TranslatePointCloud(typename pcl::PointCloud<PointT>::Ptr cloud, std::vector<double> translationVector)
+    void TranslatePointCloud(typename pcl::PointCloud<PointT>::Ptr cloud, Eigen::Vector3d translationVector)
     {
-        if (translationVector.size() != 3)
-        {
-            std::cerr << "Translation vector must have 3 elements" << std::endl;
-            return;
-        }
-        double x = translationVector[0];
-        double y = translationVector[1];
-        double z = translationVector[2];
+        double x = translationVector.x();
+        double y = translationVector.y();
+        double z = translationVector.z();
         for (auto& point : *cloud)
         {
             point.x += x;
@@ -54,26 +49,20 @@ namespace Referee::Transformations
     /**
      * @brief Recenter translation vectors by subtracting the mean translation vector
      * @param translationVectors Translation vectors to be recentered. The translation vectors will be modified in place
-     * @return std::vector<double> Mean translation vector, which was subtracted from the translation vectors.
+     * @return Eigen::Vector3d Mean translation vector, which was subtracted from the translation vectors.
      */
-    std::vector<double> RecenterTranslationVectors(std::vector<std::vector<double>> &translationVectors)
+    Eigen::Vector3d RecenterTranslationVectors(std::vector<Eigen::Vector3d> &translationVectors)
     {
-        std::vector<double> meanTranslationVector(3, 0);
-        for (auto& translationVector : translationVectors)
+        Eigen::Vector3d meanTranslationVector = Eigen::Vector3d::Zero();
+        for (const auto& translationVector : translationVectors)
         {
-            meanTranslationVector[0] += translationVector[0];
-            meanTranslationVector[1] += translationVector[1];
-            meanTranslationVector[2] += translationVector[2];
+            meanTranslationVector += translationVector;
         }
-        meanTranslationVector[0] /= translationVectors.size();
-        meanTranslationVector[1] /= translationVectors.size();
-        meanTranslationVector[2] /= translationVectors.size();
+        meanTranslationVector /= static_cast<double>(translationVectors.size());
 
         for (auto& translationVector : translationVectors)
         {
-            translationVector[0] -= meanTranslationVector[0];
-            translationVector[1] -= meanTranslationVector[1];
-            translationVector[2] -= meanTranslationVector[2];
+            translationVector -= meanTranslationVector;
         }
         return meanTranslationVector;
     }

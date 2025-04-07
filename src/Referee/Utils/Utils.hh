@@ -11,6 +11,8 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/crop_box.h>
 #include <pcl/features/normal_3d.h>
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
 
 namespace Referee 
 {
@@ -76,6 +78,15 @@ namespace Referee
             @param extension File extension to search for
             */
             std::vector<std::string> GetFilesInDirectory(const std::string& directory, const std::string& extension);
+
+            /**
+             * @brief Get translation vectors from a file. This file is supposed to be a csv with as first three elements of the first line:
+             * latitude; longitude; altitude
+             * @param filePath Path to the file
+             * @param coordSys Coordinate system we want to convert to
+             * @return std::vector<Eigen::Vector3d> Vector of translation vectors
+             */
+            Eigen::Vector3d GetTranslationVectorsFromFile(const std::string& filePath, Referee::Utils::CoordinateSystem::CoordinateSystem coordSys);
         } // FileIterators
 
         namespace Filtering
@@ -91,7 +102,17 @@ namespace Referee
              * @param maxY Maximum y value of bounding box
              * @param maxZ Maximum z value of bounding box
              */
-            void CropPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double minX, double minY, double minZ, double maxX, double maxY, double maxZ);
+            template<typename PointT>
+            void CropPointCloud(typename pcl::PointCloud<PointT>::Ptr cloud, double minX, double minY, double minZ, double maxX, double maxY, double maxZ)
+            {
+                pcl::CropBox<PointT> cropBoxFilter;
+                cropBoxFilter.setInputCloud(cloud);
+                Eigen::Vector4f minPoint(minX, minY, minZ, 1.0);
+                Eigen::Vector4f maxPoint(maxX, maxY, maxZ, 1.0);
+                cropBoxFilter.setMin(minPoint);
+                cropBoxFilter.setMax(maxPoint);
+                cropBoxFilter.filter(*cloud);
+            }
             
             /**
              * @brief Voxelize a point cloud
@@ -99,7 +120,14 @@ namespace Referee
              * @param cloud Point cloud to voxelize
              * @param leafSize Leaf size of the voxel grid
              */
-            void VoxelizePointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double leafSize);
+            template<typename PointT>
+            void VoxelizePointCloud(typename pcl::PointCloud<PointT>::Ptr cloud, double leafSize)
+            {
+                pcl::VoxelGrid<PointT> voxelGridFilter;
+                voxelGridFilter.setInputCloud(cloud);
+                voxelGridFilter.setLeafSize(leafSize, leafSize, leafSize);
+                voxelGridFilter.filter(*cloud);
+            }
         } // Filtering
 
         namespace Coloring
