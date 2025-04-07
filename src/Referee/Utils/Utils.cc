@@ -86,6 +86,32 @@ namespace Referee::Utils
             std::sort(files.begin(), files.end());
             return files;
         }
+
+        Eigen::Vector3d GetTranslationVectorsFromFile(const std::string& filePath, Referee::Utils::CoordinateSystem::CoordinateSystem coordSys)
+        {
+            Eigen::Vector3d translationVector;
+            std::ifstream fileStream(filePath);
+            std::string line;
+            bool firstLine = true; // flag to skip the header line
+            while (std::getline(fileStream, line)) 
+            {
+                if (firstLine) {
+                    firstLine = false;
+                    continue; // skip the header line
+                }
+                std::istringstream lineStream(line);
+                std::string lat, lon, alt;
+                std::getline(lineStream, lon, ';');
+                std::getline(lineStream, lat, ';');
+                std::getline(lineStream, alt, ';');
+                double x, y, z;
+                Referee::Utils::Conversions::ConvertLatLonAltToCartesian(std::stod(lat), std::stod(lon), std::stod(alt), y, x, z, Referee::Utils::CoordinateSystem::CoordinateSystem::DEG, coordSys);
+                translationVector.x() = x;
+                translationVector.y() = y;
+                translationVector.z() = z;
+            }
+            return translationVector;
+        }
     }
 
     namespace Filtering

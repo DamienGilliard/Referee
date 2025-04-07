@@ -101,7 +101,7 @@ namespace Referee::Mapping
      * @param maxDistance Maximum distance to consider a connection
      * @param matrix Connectivity matrix to be created. Each element of the vector is the list of indices the respective geolocations are connected to
      */
-    void CreateConnectivityMatrix(std::vector<std::vector<double>> geolocations, int knn, double maxDistance, std::vector<std::vector<int>>& matrix);
+    void CreateConnectivityMatrix(std::vector<Eigen::Vector3d> geolocations, int knn, double maxDistance, std::vector<std::vector<int>>& matrix);
     
 
 

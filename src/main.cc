@@ -4,7 +4,7 @@ int main()
 {
     std::vector<std::string> geolocationFiles = Referee::Utils::FileIterators::GetFilesInDirectory("../../test_files/geolocations", ".petitpoucet");
     std::vector<std::string> plyFileNames = Referee::Utils::FileIterators::GetFilesInDirectory("../../test_files/scans", ".ply");
-    std::vector<std::vector<double>> translationVectors;
+    std::vector<Eigen::Vector3d> translationVectors;
 
     if (plyFileNames.size() != geolocationFiles.size()) {
         std::cerr << "Number of geolocation files and ply files do not match" << std::endl;
@@ -13,30 +13,15 @@ int main()
 
     Referee::Utils::CoordinateSystem::CoordinateSystem coordSys = Referee::Utils::CoordinateSystem::CoordinateSystem::LV95;
 
-    for (const auto& file : geolocationFiles) {
-        std::ifstream fileStream(file);
-        std::string line;
-        bool firstLine = true; // flag to skip the header line
-        while (std::getline(fileStream, line)) 
-        {
-            if (firstLine) {
-                firstLine = false;
-                continue; // skip the header line
-            }
-            std::istringstream lineStream(line);
-            std::string lat, lon, alt;
-            std::getline(lineStream, lon, ';');
-            std::getline(lineStream, lat, ';');
-            std::getline(lineStream, alt, ';');
-            double x, y, z;
-            Referee::Utils::Conversions::ConvertLatLonAltToCartesian(std::stod(lat), std::stod(lon), std::stod(alt), y, x, z, Referee::Utils::CoordinateSystem::CoordinateSystem::DEG, coordSys);
-            translationVectors.push_back({x, y, z});
-        }
+    for (const auto& file : geolocationFiles) 
+    {
+        Eigen::Vector3d translationVector = Referee::Utils::FileIterators::GetTranslationVectorsFromFile(file, coordSys);
+        translationVectors.push_back(translationVector);
     }
 
     Referee::Mapping::MappingMatrix mappingMatrix(plyFileNames.size());
 
-    std::vector<double> meanTranslation =Referee::Transformations::RecenterTranslationVectors(translationVectors);
+    Eigen::Vector3d meanTranslation =Referee::Transformations::RecenterTranslationVectors(translationVectors);
     std::cout << "Mean translation vector: " << meanTranslation[0] << " " << meanTranslation[1] << " " << meanTranslation[2] << std::endl;
     std::vector<std::vector<int>> matrix;
     Referee::Mapping::CreateConnectivityMatrix(translationVectors, 2, 30, matrix);

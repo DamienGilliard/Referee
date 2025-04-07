@@ -11,6 +11,8 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/crop_box.h>
 #include <pcl/features/normal_3d.h>
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
 
 namespace Referee 
 {
@@ -76,6 +78,15 @@ namespace Referee
             @param extension File extension to search for
             */
             std::vector<std::string> GetFilesInDirectory(const std::string& directory, const std::string& extension);
+
+            /**
+             * @brief Get translation vectors from a file. This file is supposed to be a csv with as first three elements of the first line:
+             * latitude; longitude; altitude
+             * @param filePath Path to the file
+             * @param coordSys Coordinate system we want to convert to
+             * @return std::vector<Eigen::Vector3d> Vector of translation vectors
+             */
+            Eigen::Vector3d GetTranslationVectorsFromFile(const std::string& filePath, Referee::Utils::CoordinateSystem::CoordinateSystem coordSys);
         } // FileIterators
 
         namespace Filtering
