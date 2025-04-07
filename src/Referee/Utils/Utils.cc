@@ -113,35 +113,7 @@ namespace Referee::Utils
             return translationVector;
         }
     }
-
-    namespace Filtering
-    {
-        void CropPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double minX, double minY, double minZ, double maxX, double maxY, double maxZ)
-        {
-            pcl::CropBox<pcl::PointXYZ> cropBoxFilter;
-            cropBoxFilter.setInputCloud(cloud);
-            Eigen::Vector4f minPoint;
-            minPoint[0] = minX;
-            minPoint[1] = minY;
-            minPoint[2] = minZ;
-            Eigen::Vector4f maxPoint;
-            maxPoint[0] = maxX;
-            maxPoint[1] = maxY;
-            maxPoint[2] = maxZ;
-            cropBoxFilter.setMin(minPoint);
-            cropBoxFilter.setMax(maxPoint);
-            cropBoxFilter.filter(*cloud);
-        }
-
-        void VoxelizePointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double leafSize)
-        {
-            pcl::VoxelGrid<pcl::PointXYZ> sor;
-            sor.setInputCloud(cloud);
-            sor.setLeafSize(leafSize, leafSize, leafSize);
-            sor.filter(*cloud);
-        }
-    }
-
+    
     namespace Coloring
     {
         void ColorPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int r, int g, int b)

@@ -102,7 +102,17 @@ namespace Referee
              * @param maxY Maximum y value of bounding box
              * @param maxZ Maximum z value of bounding box
              */
-            void CropPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double minX, double minY, double minZ, double maxX, double maxY, double maxZ);
+            template<typename PointT>
+            void CropPointCloud(typename pcl::PointCloud<PointT>::Ptr cloud, double minX, double minY, double minZ, double maxX, double maxY, double maxZ)
+            {
+                pcl::CropBox<PointT> cropBoxFilter;
+                cropBoxFilter.setInputCloud(cloud);
+                Eigen::Vector4f minPoint(minX, minY, minZ, 1.0);
+                Eigen::Vector4f maxPoint(maxX, maxY, maxZ, 1.0);
+                cropBoxFilter.setMin(minPoint);
+                cropBoxFilter.setMax(maxPoint);
+                cropBoxFilter.filter(*cloud);
+            }
             
             /**
              * @brief Voxelize a point cloud
@@ -110,7 +120,14 @@ namespace Referee
              * @param cloud Point cloud to voxelize
              * @param leafSize Leaf size of the voxel grid
              */
-            void VoxelizePointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double leafSize);
+            template<typename PointT>
+            void VoxelizePointCloud(typename pcl::PointCloud<PointT>::Ptr cloud, double leafSize)
+            {
+                pcl::VoxelGrid<PointT> voxelGridFilter;
+                voxelGridFilter.setInputCloud(cloud);
+                voxelGridFilter.setLeafSize(leafSize, leafSize, leafSize);
+                voxelGridFilter.filter(*cloud);
+            }
         } // Filtering
 
         namespace Coloring
