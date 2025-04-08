@@ -80,8 +80,9 @@ int main()
             Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(temporarySourcePointCloud, translationVectors[i]);
             Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(temporaryTargetPointCloud, -translationVectors[j]);
             Eigen::Matrix4d transformationMatrix = Referee::Mapping::ComputePairwiseTransformation(temporarySourcePointCloud, temporaryTargetPointCloud, Referee::Mapping::TransformationComputationMethod::GlobalMatch);
-            mappingMatrix.SetTransformationMatrix(i, j, transformationMatrix);
-            
+            mappingMatrix.SetTransformationMatrix(i, matrix[i][j], transformationMatrix);
+            Referee::Mapping::ChaslesTransformation chaslesTransformation(transformationMatrix);
+            std::cout << "Chasles rotation center: " << chaslesTransformation.GetPointOnAxis() << std::endl;
         }
     }
 

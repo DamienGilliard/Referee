@@ -11,6 +11,29 @@
 
 namespace Referee::Mapping
 {
+    /**
+     * @brief Thic class stores a transformation in 3D in the form of a rotation axis, a point on this axis, a rotation along this axis, and a translation along this axis.
+     * 
+     */
+    class ChaslesTransformation
+    {
+        public:
+            ChaslesTransformation() = default;
+            ChaslesTransformation(Eigen::Vector3d rotationAxis, Eigen::Vector3d pointOnAxis, double rotationAngle, Eigen::Vector3d translation)
+                : __rotationAxis(rotationAxis), __pointOnAxis(pointOnAxis), __rotationAngle(rotationAngle), __translation(translation) {}
+            ChaslesTransformation(Eigen::Matrix4d transformationMatrix);
+
+            Eigen::Vector3d GetRotationAxis() const { return __rotationAxis; }
+            Eigen::Vector3d GetPointOnAxis() const { return __pointOnAxis; }
+            double GetRotationAngle() const { return __rotationAngle; }
+            Eigen::Vector3d GetTranslation() const { return __translation; }
+        
+        private:
+            Eigen::Vector3d __rotationAxis; // rotation axis
+            Eigen::Vector3d __pointOnAxis; // point on the rotation axis
+            double __rotationAngle; // rotation angle in radians
+            Eigen::Vector3d __translation; // translation along the rotation axis
+    };
 
     
     /**
@@ -18,78 +41,81 @@ namespace Referee::Mapping
      */
     class MappingMatrix
     {
-    public:
-        /**
-         * @brief Construct a new MappingMatrix object
-         * @param numPointClouds Number of point clouds
-         */
-        MappingMatrix(int numPointClouds)
-        {
-            __mappingMatrix.resize(numPointClouds);
-            for (int i = 0; i < numPointClouds; i++)
+        public:
+            /**
+             * @brief Construct a new MappingMatrix object
+             * @param numPointClouds Number of point clouds
+             */
+            MappingMatrix(int numPointClouds)
             {
-                __mappingMatrix[i].resize(numPointClouds);
-            }
-
-            for(int i = 0; i < numPointClouds; i++)
-            {
-                for(int j = 0; j < numPointClouds; j++)
+                __mappingMatrix.resize(numPointClouds);
+                for (int i = 0; i < numPointClouds; i++)
                 {
-                    __mappingMatrix[i][j] = Eigen::Matrix4d::Zero();
+                    __mappingMatrix[i].resize(numPointClouds);
+                }
+
+                for(int i = 0; i < numPointClouds; i++)
+                {
+                    for(int j = 0; j < numPointClouds; j++)
+                    {
+                        __mappingMatrix[i][j] = Eigen::Matrix4d::Zero();
+                    }
                 }
             }
-        }
 
-        /**
-         * @brief Getter of the transformation matrix between two point clouds
-         * @param i Index of the first point cloud
-         * @param j Index of the second point cloud
-         * @return Eigen::Matrix4d Transformation matrix between the two point clouds
-         */
-        Eigen::Matrix4d GetTransformationMatrix(int i, int j)
-        {
-            return __mappingMatrix[i][j];
-        }
+            /**
+             * @brief Getter of the transformation matrix between two point clouds
+             * @param i Index of the first point cloud
+             * @param j Index of the second point cloud
+             * @return Eigen::Matrix4d Transformation matrix between the two point clouds
+             */
+            Eigen::Matrix4d GetTransformationMatrix(int i, int j)
+            {
+                return __mappingMatrix[i][j];
+            }
 
-        /**
-         * @brief Setter for the transformation matrix between two point clouds
-         * @param i Index of the first point cloud
-         * @param j Index of the second point cloud
-         * @param transformationMatrix Transformation matrix between the two point clouds
-         */
-        void SetTransformationMatrix(int i, int j, Eigen::Matrix4d transformationMatrix)
-        {
-            __mappingMatrix[i][j] = transformationMatrix;
-        }
+            /**
+             * @brief Setter for the transformation matrix between two point clouds
+             * @param i Index of the first point cloud
+             * @param j Index of the second point cloud
+             * @param transformationMatrix Transformation matrix between the two point clouds
+             */
+            void SetTransformationMatrix(int i, int j, Eigen::Matrix4d transformationMatrix)
+            {
+                __mappingMatrix[i][j] = transformationMatrix;
+            }
 
-        /**
-         * @brief Calculate the mean transformation matrix per point cloud (i.e. the mean transformation matrix along one row of the mapping matrix)
-         */
-        void CalculateMeanTransformationMatrices();
+            /**
+             * @brief Calculate the mean transformation matrix per point cloud (i.e. the mean transformation matrix along one row of the mapping matrix)
+             */
+            void CalculateMeanTransformationMatrices();
 
 
-        std::vector<std::vector<int>> GetConnectivityMatrix();
+            Eigen::Matrix4d GetMeanTransformationMatrix(int i)
+            {
+                return __meanTransformationMatrices[i];
+            }
 
-        /**
-         * @brief Print the mapping matrix to the console
-         */
-        void PrintMatrix();
+            /**
+             * @brief Print the mapping matrix to the console
+             */
+            void PrintMatrix();
 
-        /**
-         * @brief Print the mean transformation matrices to the console
-         */
-        void PrintMeanMatrices();
+            /**
+             * @brief Print the mean transformation matrices to the console
+             */
+            void PrintMeanMatrices();
 
-    private:
-        /**
-         * @brief Mapping matrix between the point clouds, where each element is the transformation matrix between two point clouds
-         */
-        std::vector<std::vector<Eigen::Matrix4d>> __mappingMatrix;
+        private:
+            /**
+             * @brief Mapping matrix between the point clouds, where each element is the transformation matrix between two point clouds
+             */
+            std::vector<std::vector<Eigen::Matrix4d>> __mappingMatrix;
 
-        /**
-         * @brief Mean transformation matrix per point cloud
-         */
-        std::vector<Eigen::Matrix4d> __meanTransformationMatrices;
+            /**
+             * @brief Mean transformation matrix per point cloud
+             */
+            std::vector<Eigen::Matrix4d> __meanTransformationMatrices;
     };
     
 
@@ -138,7 +164,7 @@ namespace Referee::Mapping
     /**
      * @brief Computes the rotation axis and translation along this axis. This relies on the Chasles theorem. 
      * @param transformationMatrix the transformation matrix
-     * @return the rotation axis of the transformation matrix (first vector) and the translation along this axis (second vector)
+     * @return the rotation axis of the transformation matrix (first vector) and the translation along this axis (second vector), and a ploint on the axis (third vector)
      * @note The rotation axis norm is the rotation angle in radians.
      */
     std::vector<Eigen::Vector3d> ComputeScrewAxis(Eigen::Matrix4d transformationMatrix);

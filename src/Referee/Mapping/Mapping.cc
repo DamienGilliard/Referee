@@ -2,13 +2,25 @@
 
 namespace Referee::Mapping
 {
+    ChaslesTransformation::ChaslesTransformation(Eigen::Matrix4d transformationMatrix)
+    {
+        Eigen::Matrix3d rotationMatrix = transformationMatrix.block<3, 3>(0, 0);
+        Eigen::Vector3d translationVector = transformationMatrix.block<3, 1>(0, 3);
+
+        Eigen::AngleAxisd angleAxis(rotationMatrix);
+        __rotationAxis = angleAxis.axis();
+        __rotationAngle = angleAxis.angle();
+        __pointOnAxis = translationVector;
+        __translation = translationVector;
+    }
+
     void MappingMatrix::PrintMatrix()
     {
         for(int i = 0; i < __mappingMatrix.size(); i++)
         {
             for(int j = 0; j < __mappingMatrix[i].size(); j++)
             {
-                std::cout << "matrix " << i << " " << j << std::endl;
+                std::cout << i << " " << j << " : " << std::endl;
                 std::cout << __mappingMatrix[i][j] << " ";
                 std::cout << std::endl;
             }
