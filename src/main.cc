@@ -4,15 +4,15 @@ int main()
 {
     std::vector<std::string> geolocationFiles = Referee::Utils::FileIterators::GetFilesInDirectory("../../test_files/geolocations", ".petitpoucet");
     std::vector<std::string> plyFileNames = Referee::Utils::FileIterators::GetFilesInDirectory("../../test_files/scans", ".ply");
-    std::vector<Eigen::Vector3d> translationVectors;
 
-    if (plyFileNames.size() != geolocationFiles.size()) {
+    if (plyFileNames.size() != geolocationFiles.size()) 
+    {
         std::cerr << "Number of geolocation files and ply files do not match" << std::endl;
         return 1;
     }
 
     Referee::Utils::CoordinateSystem::CoordinateSystem coordSys = Referee::Utils::CoordinateSystem::CoordinateSystem::LV95;
-
+    std::vector<Eigen::Vector3d> translationVectors;
     for (const auto& file : geolocationFiles) 
     {
         Eigen::Vector3d translationVector = Referee::Utils::FileIterators::GetTranslationVectorsFromFile(file, coordSys);
@@ -50,108 +50,44 @@ int main()
     pcl::PointCloud<pcl::PointXYZ>::Ptr targetPointCloud(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredFinalPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
-    // iterate through all other point clouds, register them and merge them to the reference
-
-    if (pcl::io::loadPLYFile<pcl::PointXYZ>(plyFileNames[0], *targetPointCloud) == -1)
+    // Calculate the different relative transformations
+    for (int i = 0; i < matrix.size(); i++)
     {
-        PCL_ERROR("Couldn't read file %s \n", plyFileNames[0].c_str());
-        return 0;
-    }
-    std::cout << "cropping point cloud " << std::endl;
-    Referee::Utils::Filtering::CropPointCloud(targetPointCloud, -40, -40, -100, 40, 40, 8000);
-    std::cout << "voxelizing point cloud " << std::endl;
-    Referee::Utils::Filtering::VoxelizePointCloud(targetPointCloud, 0.025);
-
-    pcl::PointCloud<pcl::Normal>::Ptr targetNormals(new pcl::PointCloud<pcl::Normal>);
-    Referee::Utils::NormalCalculation::CalculateNormals(targetPointCloud, targetNormals, 5);
-    pcl::PointCloud<pcl::PointNormal>::Ptr targetPointCloudWithNormals(new pcl::PointCloud<pcl::PointNormal>);
-    for (size_t i = 0; i < targetPointCloud->size(); ++i)
-    {
-        pcl::PointNormal pointWithNormal;
-        pointWithNormal.x = targetPointCloud->points[i].x;
-        pointWithNormal.y = targetPointCloud->points[i].y;
-        pointWithNormal.z = targetPointCloud->points[i].z;
-        pointWithNormal.normal_x = targetNormals->points[i].normal_x;
-        pointWithNormal.normal_y = targetNormals->points[i].normal_y;
-        pointWithNormal.normal_z = targetNormals->points[i].normal_z;
-        targetPointCloudWithNormals->push_back(pointWithNormal);
-    }
-    Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(targetPointCloudWithNormals, translationVectors[0]);
-
-    // load the j-th point cloud
-    for(int j = 1; j < plyFileNames.size(); j++)
-    {
-        pcl::PointCloud<pcl::PointXYZ>::Ptr sourcePointCloud(new pcl::PointCloud<pcl::PointXYZ>);
-        if (pcl::io::loadPLYFile<pcl::PointXYZ>(plyFileNames[j], *sourcePointCloud) == -1)
+        for (int j = 0; j < matrix[i].size(); j++)
         {
-            PCL_ERROR("Couldn't read file %s \n", plyFileNames[j].c_str());
-            return 0;
-        }
-        Referee::Utils::Filtering::CropPointCloud(sourcePointCloud, -40, -40, -100, 40, 40, 8000);
-        Referee::Utils::Filtering::VoxelizePointCloud(sourcePointCloud, 0.025);
-
-        // compute the normals of the source point cloud
-        pcl::PointCloud<pcl::Normal>::Ptr sourceNormals(new pcl::PointCloud<pcl::Normal>);
-        Referee::Utils::NormalCalculation::CalculateNormals(sourcePointCloud, sourceNormals, 5);
-        pcl::PointCloud<pcl::PointNormal>::Ptr sourcePointCloudWithNormals(new pcl::PointCloud<pcl::PointNormal>);
-        for (size_t k = 0; k < sourcePointCloud->size(); ++k)
-        {
-            pcl::PointNormal pointWithNormal;
-            pointWithNormal.x = sourcePointCloud->points[k].x;
-            pointWithNormal.y = sourcePointCloud->points[k].y;
-            pointWithNormal.z = sourcePointCloud->points[k].z;
-            pointWithNormal.normal_x = sourceNormals->points[k].normal_x;
-            pointWithNormal.normal_y = sourceNormals->points[k].normal_y;
-            pointWithNormal.normal_z = sourceNormals->points[k].normal_z;
-            sourcePointCloudWithNormals->push_back(pointWithNormal);
-        }
-        Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(sourcePointCloudWithNormals, translationVectors[j]);
-        Eigen::Matrix4d transformationMatrix = Referee::Mapping::ComputePairwiseTransformation(sourcePointCloudWithNormals, targetPointCloudWithNormals, Referee::Mapping::TransformationComputationMethod::GlobalMatch);
-        std::cout << "Transformation matrix: " << std::endl << transformationMatrix << std::endl;
-        std::vector<Eigen::Vector3d> screwAxis = Referee::Mapping::ComputeScrewAxis(transformationMatrix);
-        std::cout << "Screw axis: " << screwAxis[0][0] << " " << screwAxis[0][1] << " " << screwAxis[0][2] << std::endl;
-        std::cout << "Translation along screw axis: " << screwAxis[1][0] << " " << screwAxis[1][1] << " " << screwAxis[1][2] << std::endl;
-        std::cout << "Point on screw axis: " << screwAxis[2][0] << " " << screwAxis[2][1] << " " << screwAxis[2][2] << std::endl;
-        Referee::Transformations::TransformPointCloud<pcl::PointNormal>(sourcePointCloudWithNormals, transformationMatrix);
+            pcl::PointCloud<pcl::PointNormal>::Ptr temporarySourcePointCloud(new pcl::PointCloud<pcl::PointNormal>);
+            pcl::PointCloud<pcl::PointNormal>::Ptr temporaryTargetPointCloud(new pcl::PointCloud<pcl::PointNormal>);
+            std::cout << "Computing transformation between point cloud " << i << " and point cloud " << matrix[i][j] << std::endl;
+            std::cout << "Loading point cloud " << i << std::endl;
+            if (pcl::io::loadPLYFile<pcl::PointNormal>(plyFileNames[i], *temporarySourcePointCloud) == -1)
+            {
+                PCL_ERROR("Couldn't read file %s \n", plyFileNames[i].c_str());
+                return 0;
+            }
+            std::cout << "Loading point cloud " << matrix[i][j] << std::endl;
+            if (pcl::io::loadPLYFile<pcl::PointNormal>(plyFileNames[matrix[i][j]], *temporaryTargetPointCloud) == -1)
+            {
+                PCL_ERROR("Couldn't read file %s \n", plyFileNames[matrix[i][j]].c_str());
+                return 0;
+            }
+            std::cout << "Cropping point cloud " << i << std::endl;
+            Referee::Utils::Filtering::CropPointCloud<pcl::PointNormal>(temporaryTargetPointCloud, -40, -40, -100, 40, 40, 8000);
+            std::cout << "Downsampling point cloud " << i << std::endl;
+            Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(temporaryTargetPointCloud, 0.05);
+            Referee::Utils::Filtering::CropPointCloud<pcl::PointNormal>(temporarySourcePointCloud, -40, -40, -100, 40, 40, 8000);
+            std::cout << "Downsampling point cloud " << j << std::endl;
+            Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(temporarySourcePointCloud, 0.05);
+            Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(temporarySourcePointCloud, translationVectors[i]);
+            Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(temporaryTargetPointCloud, -translationVectors[j]);
+            Eigen::Matrix4d transformationMatrix = Referee::Mapping::ComputePairwiseTransformation(temporarySourcePointCloud, temporaryTargetPointCloud, Referee::Mapping::TransformationComputationMethod::GlobalMatch);
+            mappingMatrix.SetTransformationMatrix(i, j, transformationMatrix);
             
-        // Eigen::Matrix4d refinedTransformationMatrix = Referee::Mapping::RefinePairwiseTransformation(sourcePointCloudWithNormals, targetPointCloudWithNormals, Referee::Mapping::RefinementMethod::ICPNormals, 0.1);
-        // std::cout << "Refined transformation matrix: " << std::endl << refinedTransformationMatrix << std::endl;
-        // Referee::Transformations::TransformPointCloud<pcl::PointNormal>(sourcePointCloudWithNormals, refinedTransformationMatrix);
-
-        for (auto& point : *sourcePointCloudWithNormals)
-        {
-            targetPointCloudWithNormals->push_back(point);
-            pcl::PointXYZ pointxyz;
-            pointxyz.x = point.x;
-            pointxyz.y = point.y;
-            pointxyz.z = point.z;
-            targetPointCloud->push_back(pointxyz);
-            pcl::PointXYZRGB coloredPoint;
-            coloredPoint.x = point.x;
-            coloredPoint.y = point.y;
-            coloredPoint.z = point.z;
-            coloredPoint.r = 255*(double(j+1))/double(totCount);
-            coloredPoint.g = 255 - (double(j+1)/double(totCount))*255;
-            coloredPoint.b = 5*j;
-            coloredFinalPointCloud->push_back(coloredPoint);
         }
-        Eigen::Matrix3d rotationMatrixInv = transformationMatrix.block<3, 3>(0, 0).inverse();
-        Eigen::Vector3d translationVector = transformationMatrix.block<3, 1>(0, 3);
-        Eigen::Vector3d translationVectorInv = -translationVector;
-        Eigen::Matrix4d transformationMatrixInv = Eigen::Matrix4d::Identity();
-        transformationMatrixInv.block<3, 3>(0, 0) = rotationMatrixInv;
-        transformationMatrixInv.block<3, 1>(0, 3) = translationVectorInv;
     }
 
-    Referee::Utils::CoordinateSystem::PointCloudGeolocation geolocation(translationVectors[0][0] + meanTranslation[0], translationVectors[0][1]+ meanTranslation[1], translationVectors[0][2]+ meanTranslation[2], coordSys);
-    geolocation.fileName = "../test_files/registred_scans/geolocation";
-    geolocation.WriteToGeojson();
-    std::string filename_result = "../test_files/registred_scans/result.ply";
-    pcl::io::savePLYFile<pcl::PointXYZRGB>(filename_result, *coloredFinalPointCloud);
-
-    // mappingMatrix.PrintMatrix();
-    // mappingMatrix.CalculateMeanTransformationMatrices();
-    // mappingMatrix.PrintMeanMatrices();
+    mappingMatrix.PrintMatrix();
+    mappingMatrix.CalculateMeanTransformationMatrices();
+    mappingMatrix.PrintMeanMatrices();
 
     return 0;
 }
