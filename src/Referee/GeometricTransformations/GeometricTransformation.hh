@@ -1,3 +1,5 @@
+#pragma once
+
 #include "pcl/io/ply_io.h"
 #include "pcl/point_types.h"
 #include <pcl/point_cloud.h>
@@ -5,6 +7,8 @@
 
 #include <vector>
 #include <iostream>
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
 
 namespace Referee::Transformations
 {
@@ -51,20 +55,24 @@ namespace Referee::Transformations
      * @param translationVectors Translation vectors to be recentered. The translation vectors will be modified in place
      * @return Eigen::Vector3d Mean translation vector, which was subtracted from the translation vectors.
      */
-    Eigen::Vector3d RecenterTranslationVectors(std::vector<Eigen::Vector3d> &translationVectors)
-    {
-        Eigen::Vector3d meanTranslationVector = Eigen::Vector3d::Zero();
-        for (const auto& translationVector : translationVectors)
-        {
-            meanTranslationVector += translationVector;
-        }
-        meanTranslationVector /= static_cast<double>(translationVectors.size());
+    Eigen::Vector3d RecenterTranslationVectors(std::vector<Eigen::Vector3d> &translationVectors);
 
-        for (auto& translationVector : translationVectors)
-        {
-            translationVector -= meanTranslationVector;
-        }
-        return meanTranslationVector;
-    }
+    /**
+     * @brief Calculate the median plane between two points
+     * @param point1 First point
+     * @param point2 Second point
+     * @return std::vector<Eigen::Vector3d> A vector containing two elements: the origin (first element) and the normal vector (second element) of the plane
+     */
+    std::vector<Eigen::Vector3d> CalculateMedianPlane(Eigen::Vector3d point1, Eigen::Vector3d point2);
+
+    /**
+     * @brief Calculate the intersection point of three planes
+     * @param plane1 First plane
+     * @param plane2 Second plane
+     * @param plane3 Third plane
+     * @return Eigen::Vector3d Intersection point of the three planes
+     * @note The planes are defined by their origin and normal vector. The first element of the vector is the origin, the second element is the normal vector.
+     */
+    Eigen::Vector3d CalculatePlaneIntersection(std::vector<Eigen::Vector3d> plane1, std::vector<Eigen::Vector3d> plane2, std::vector<Eigen::Vector3d> plane3);
 
 } // Referee::Transformations
