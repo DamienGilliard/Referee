@@ -1,4 +1,5 @@
 #include "Mapping.hh"
+#include "../GeometricTransformations/GeometricTransformation.hh"
 
 namespace Referee::Mapping
 {
@@ -7,11 +8,11 @@ namespace Referee::Mapping
         Eigen::Matrix3d rotationMatrix = transformationMatrix.block<3, 3>(0, 0);
         Eigen::Vector3d translationVector = transformationMatrix.block<3, 1>(0, 3);
 
-        Eigen::AngleAxisd angleAxis(rotationMatrix);
-        __rotationAxis = angleAxis.axis();
-        __rotationAngle = angleAxis.angle();
-        __pointOnAxis = translationVector;
-        __translation = translationVector;
+        std::vector<Eigen::Vector3d> screwAxis = ComputeScrewAxis(transformationMatrix);
+        __rotationAxis = screwAxis[0];
+        __translation = screwAxis[1];
+        __pointOnAxis = screwAxis[2];
+        __rotationAngle = __rotationAxis.norm();
     }
 
     void MappingMatrix::PrintMatrix()
@@ -228,12 +229,31 @@ namespace Referee::Mapping
         {
             v = translationVector;
         }
+
+        Eigen::Vector3d omegaNormalized = omega.normalized();
+
         Eigen::Vector3d vParallel = (omega.dot(v) / omega.dot(omega)) * omega;
-        Eigen::Vector3d pointOnAxis = omega.cross(v) / omega.dot(omega);
+        Eigen::Vector3d vPerpendicular = translationVector - vParallel;
+
+        Eigen::Vector3d testPoint1(0, 0, 0);
+        Eigen::Vector3d testPoint2(0, 1000, 0);
+        Eigen::Vector3d testPoint3(0, 0, 2000);
+
+        Eigen::Vector3d transformedPoint1 = rotationMatrix * testPoint1 + translationVector;
+        Eigen::Vector3d transformedPoint2 = rotationMatrix * testPoint2 + translationVector;
+        Eigen::Vector3d transformedPoint3 = rotationMatrix * testPoint3 + translationVector;
+
+        std::vector<Eigen::Vector3d> plane1 = {(transformedPoint1 + testPoint1)/2, (transformedPoint1 - testPoint1).normalized()};
+        std::vector<Eigen::Vector3d> plane2 = {(transformedPoint2 + testPoint2)/2, (transformedPoint2 - testPoint2).normalized()};
+        std::vector<Eigen::Vector3d> plane3 = {(transformedPoint3 + testPoint3)/2, (transformedPoint3 - testPoint3).normalized()};
+        
+        Eigen::Vector3d intersectionPoint = Referee::Transformations::CalculatePlaneIntersection(plane1, plane2, plane3);
+
+        // Calculate a point on the axis of rotation
         std::vector<Eigen::Vector3d> screwAxis;
         screwAxis.push_back(omega);
         screwAxis.push_back(vParallel);
-        screwAxis.push_back(pointOnAxis);
+        screwAxis.push_back(intersectionPoint);
         return screwAxis;
     }
 }
