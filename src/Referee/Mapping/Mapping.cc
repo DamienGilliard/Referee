@@ -236,8 +236,8 @@ namespace Referee::Mapping
         Eigen::Vector3d vPerpendicular = translationVector - vParallel;
 
         Eigen::Vector3d testPoint1(0, 0, 0);
-        Eigen::Vector3d testPoint2(0, 1000, 0);
-        Eigen::Vector3d testPoint3(0, 0, 2000);
+        Eigen::Vector3d testPoint2(0, translationVector.norm(), 0);
+        Eigen::Vector3d testPoint3(0, 0, translationVector.norm());
 
         Eigen::Vector3d transformedPoint1 = rotationMatrix * testPoint1 + translationVector;
         Eigen::Vector3d transformedPoint2 = rotationMatrix * testPoint2 + translationVector;
@@ -246,7 +246,7 @@ namespace Referee::Mapping
         std::vector<Eigen::Vector3d> plane1 = {(transformedPoint1 + testPoint1)/2, (transformedPoint1 - testPoint1).normalized()};
         std::vector<Eigen::Vector3d> plane2 = {(transformedPoint2 + testPoint2)/2, (transformedPoint2 - testPoint2).normalized()};
         std::vector<Eigen::Vector3d> plane3 = {(transformedPoint3 + testPoint3)/2, (transformedPoint3 - testPoint3).normalized()};
-        
+
         Eigen::Vector3d intersectionPoint = Referee::Transformations::CalculatePlaneIntersection(plane1, plane2, plane3);
 
         // Calculate a point on the axis of rotation
