@@ -25,6 +25,11 @@ namespace Referee::Mapping
                 : __rotationAxis(rotationAxis), __pointOnAxis(pointOnAxis), __rotationAngle(rotationAngle), __translation(translation) {}
             ChaslesTransformation(Eigen::Matrix4d transformationMatrix);
 
+            /**
+             * @brief Print the transformation to the console
+             */
+            void PrintTransformation();
+
             Eigen::Vector3d GetRotationAxis() const { return __rotationAxis; }
             Eigen::Vector3d GetPointOnAxis() const { return __pointOnAxis; }
             double GetRotationAngle() const { return __rotationAngle; }
@@ -60,7 +65,7 @@ namespace Referee::Mapping
                 {
                     for(int j = 0; j < numPointClouds; j++)
                     {
-                        __mappingMatrix[i][j] = Eigen::Matrix4d::Zero();
+                        __mappingMatrix[i][j] = Referee::Mapping::ChaslesTransformation();
                     }
                 }
             }
@@ -69,9 +74,9 @@ namespace Referee::Mapping
              * @brief Getter of the transformation matrix between two point clouds
              * @param i Index of the first point cloud
              * @param j Index of the second point cloud
-             * @return Eigen::Matrix4d Transformation matrix between the two point clouds
+             * @return Referee::Mapping::ChaslesTransformation between the two point clouds
              */
-            Eigen::Matrix4d GetTransformationMatrix(int i, int j)
+            Referee::Mapping::ChaslesTransformation GetChaslesTransformation(int i, int j)
             {
                 return __mappingMatrix[i][j];
             }
@@ -80,11 +85,11 @@ namespace Referee::Mapping
              * @brief Setter for the transformation matrix between two point clouds
              * @param i Index of the first point cloud
              * @param j Index of the second point cloud
-             * @param transformationMatrix Transformation matrix between the two point clouds
+             * @param ChaslesTransformation Transformation matrix between the two point clouds
              */
-            void SetTransformationMatrix(int i, int j, Eigen::Matrix4d transformationMatrix)
+            void SetChaslesTransformation(int i, int j, Referee::Mapping::ChaslesTransformation chaslesTransformation)
             {
-                __mappingMatrix[i][j] = transformationMatrix;
+                __mappingMatrix[i][j] = chaslesTransformation;
             }
 
             /**
@@ -93,9 +98,9 @@ namespace Referee::Mapping
             void CalculateMeanTransformationMatrices();
 
 
-            Eigen::Matrix4d GetMeanTransformationMatrix(int i)
+            Referee::Mapping::ChaslesTransformation GetMeanChaslesTransformation(int i)
             {
-                return __meanTransformationMatrices[i];
+                return __meanChaslesTransformations[i];
             }
 
             /**
@@ -112,12 +117,12 @@ namespace Referee::Mapping
             /**
              * @brief Mapping matrix between the point clouds, where each element is the transformation matrix between two point clouds
              */
-            std::vector<std::vector<Eigen::Matrix4d>> __mappingMatrix;
+            std::vector<std::vector<Referee::Mapping::ChaslesTransformation>> __mappingMatrix;
 
             /**
              * @brief Mean transformation matrix per point cloud
              */
-            std::vector<Eigen::Matrix4d> __meanTransformationMatrices;
+            std::vector<Referee::Mapping::ChaslesTransformation> __meanChaslesTransformations;
     };
     
 
@@ -165,9 +170,9 @@ namespace Referee::Mapping
 
     /**
      * @brief Computes the rotation axis and translation along this axis. This relies on the Chasles theorem. 
-     * @param transformationMatrix the transformation matrix
+     * @param ChaslesTransformation the transformation matrix
      * @return the rotation axis of the transformation matrix (first vector) and the translation along this axis (second vector), and a ploint on the axis (third vector)
      * @note The rotation axis norm is the rotation angle in radians.
      */
-    std::vector<Eigen::Vector3d> ComputeScrewAxis(Eigen::Matrix4d transformationMatrix);
+    std::vector<Eigen::Vector3d> ComputeScrewAxis(Eigen::Matrix4d ChaslesTransformation);
 }
