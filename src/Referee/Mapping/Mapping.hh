@@ -82,6 +82,20 @@ namespace Referee::Mapping
             }
 
             /**
+             * @brief Getter for the standard deviation of the rotation angles of the transformation matrices
+             * @param i Index of the point cloud
+             * @return Standard deviation of the rotation angles of the transformation matrices
+             */
+            double GetStdDevRotation(int i){return __stdDevRotations[i];}
+
+            /**
+             * @brief Getter for the mean rotation angle of the transformation matrices
+             * @param i Index of the point cloud
+             * @return Mean rotation angle of the transformation matrices
+             */
+            double GetMeanRotation(int i){return __meanChaslesTransformations[i].GetRotationAngle();}
+
+            /**
              * @brief Setter for the transformation matrix between two point clouds
              * @param i Index of the first point cloud
              * @param j Index of the second point cloud
@@ -123,6 +137,11 @@ namespace Referee::Mapping
              * @brief Mean transformation matrix per point cloud
              */
             std::vector<Referee::Mapping::ChaslesTransformation> __meanChaslesTransformations;
+
+            /**
+             * @brief standard deviation of the rotation angles of the transformation matrices
+             */
+            std::vector<double> __stdDevRotations;
     };
     
 

@@ -47,6 +47,8 @@ namespace Referee::Mapping
 
     void MappingMatrix::CalculateMeanTransformationMatrices()
     {
+        std::vector<double> stdDevRotations;
+        this->__stdDevRotations.resize(__mappingMatrix.size());
         this->__meanChaslesTransformations.resize(__mappingMatrix.size());
         for(int i = 0; i < __mappingMatrix.size(); i++)
         {
@@ -54,6 +56,7 @@ namespace Referee::Mapping
             Eigen::Vector3d meanRotationAxis = Eigen::Vector3d::Zero();
             Eigen::Vector3d meanRotationAnchor = Eigen::Vector3d::Zero();
             double meanRotation = 0;
+            double stdDevRotation = 0;
             int nonZeroMatrices = 0;
             for(int j = 0; j < __mappingMatrix[i].size(); j++)
             {
@@ -77,6 +80,17 @@ namespace Referee::Mapping
             meanRotationAxis /= nonZeroMatrices;
             meanRotation /= nonZeroMatrices;
             meanRotationAnchor /= nonZeroMatrices;
+
+            for(int j = 0; j < __mappingMatrix[i].size(); j++)
+            {
+                if(__mappingMatrix[i][j].GetRotationAngle() == 0 && __mappingMatrix[i][j].GetTranslation().norm() == 0)
+                {
+                    continue;
+                }
+                stdDevRotation += std::pow(__mappingMatrix[i][j].GetRotationAngle() - meanRotation, 2);
+            }
+            stdDevRotation = sqrt(stdDevRotation / nonZeroMatrices);
+            __stdDevRotations[i] = stdDevRotation;
 
             Referee::Mapping::ChaslesTransformation meanChaslesTransformation(meanRotationAxis, meanRotationAnchor, meanRotation, meanTranslation);
             this->__meanChaslesTransformations[i] = meanChaslesTransformation;
