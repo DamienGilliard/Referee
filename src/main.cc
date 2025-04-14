@@ -24,7 +24,7 @@ int main()
     Eigen::Vector3d meanTranslation =Referee::Transformations::RecenterTranslationVectors(translationVectors);
     std::cout << "Mean translation vector: " << meanTranslation[0] << " " << meanTranslation[1] << " " << meanTranslation[2] << std::endl;
     std::vector<std::vector<int>> matrix;
-    Referee::Mapping::CreateConnectivityMatrix(translationVectors, 2, 30, matrix);
+    Referee::Mapping::CreateConnectivityMatrix(translationVectors, 3, 30, matrix);
 
     std::cout << "____________________Connectivity matrix:____________________" << std::endl;
     for(int i = 0; i < matrix.size(); i++)
@@ -74,14 +74,15 @@ int main()
             Referee::Utils::Filtering::CropPointCloud<pcl::PointNormal>(temporaryTargetPointCloud, -40, -40, -100, 40, 40, 8000);
             std::cout << "Downsampling point cloud " << i << std::endl;
             Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(temporaryTargetPointCloud, 0.05);
+            std::cout << "Cropping point cloud " << matrix[i][j] << std::endl;
             Referee::Utils::Filtering::CropPointCloud<pcl::PointNormal>(temporarySourcePointCloud, -40, -40, -100, 40, 40, 8000);
-            std::cout << "Downsampling point cloud " << j << std::endl;
+            std::cout << "Downsampling point cloud " << matrix[i][j] << std::endl;
             Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(temporarySourcePointCloud, 0.05);
             Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(temporarySourcePointCloud, translationVectors[i]);
             Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(temporaryTargetPointCloud, -translationVectors[j]);
             Eigen::Matrix4d transformationMatrix = Referee::Mapping::ComputePairwiseTransformation(temporarySourcePointCloud, temporaryTargetPointCloud, Referee::Mapping::TransformationComputationMethod::GlobalMatch);
-            mappingMatrix.SetTransformationMatrix(i, matrix[i][j], transformationMatrix);
             Referee::Mapping::ChaslesTransformation chaslesTransformation(transformationMatrix);
+            mappingMatrix.SetChaslesTransformation(i, matrix[i][j], chaslesTransformation);
             std::cout << "Chasles rotation center: " << chaslesTransformation.GetPointOnAxis() << std::endl;
         }
     }
@@ -89,6 +90,12 @@ int main()
     mappingMatrix.PrintMatrix();
     mappingMatrix.CalculateMeanTransformationMatrices();
     mappingMatrix.PrintMeanMatrices();
+
+    for(int i = 0; i < plyFileNames.size(); i++)
+    {
+        std::cout << "mean rotation of pc " << i << " = " << mappingMatrix.GetMeanRotation(i) << std::endl;
+        std::cout << "std dev rotation of pc " << i << " = " << mappingMatrix.GetStdDevRotation(i) << std::endl;
+    }
 
     return 0;
 }
