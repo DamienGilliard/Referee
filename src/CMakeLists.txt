@@ -55,20 +55,21 @@ target_link_libraries(${EXECUTABLE_NAME_1} ${SHARED_LIB_NAME})
 # Unit tests
 #############
 
-set(UNIT_TEST_EXECUTABLE_NAME_TRANSLATIONS test_translations)
-set(UNIT_TEST_EXECUTABLE_NAME_MEAN_TRANSFORMATION test_mean_transformation)
-set(UNIT_TEST_EXECUTABLE_NAME_CHASLES test_chasles_transformation)
-set(UNIT_TEST_EXECUTABLE_NAME_PLANE_INTERSECTION test_plane_intersection)
+# Get all test files in the ./UnitTests/ directory
+file(GLOB UNIT_TEST_FILES "${CMAKE_CURRENT_SOURCE_DIR}/tests/UnitTests/*.cc")
 
 enable_testing()
 include(CTest)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tests)
 
+set(TEST_EXECUTABLES)
+foreach(TEST_FILE ${UNIT_TEST_FILES})
+    get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)
+    list(APPEND TEST_EXECUTABLES ${TEST_NAME})
+endforeach()
+
 add_custom_target(run_tests
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
-    DEPENDS ${UNIT_TEST_EXECUTABLE_NAME_TRANSLATIONS} 
-            ${UNIT_TEST_EXECUTABLE_NAME_MEAN_TRANSFORMATION} 
-            ${UNIT_TEST_EXECUTABLE_NAME_CHASLES}
-            ${UNIT_TEST_EXECUTABLE_NAME_PLANE_INTERSECTION}) 
+    DEPENDS ${TEST_EXECUTABLES})
 
 add_dependencies(${EXECUTABLE_NAME_1} run_tests) 
