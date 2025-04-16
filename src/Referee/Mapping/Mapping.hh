@@ -111,12 +111,33 @@ namespace Referee::Mapping
              */
             void CalculateMeanTransformationMatrices();
 
-
+            /**
+             * @brief Getter for the mean transformation matrix of a point cloud
+             * @param i Index of the point cloud
+             * @return Mean transformation matrix of the point cloud
+             */
             Referee::Mapping::ChaslesTransformation GetMeanChaslesTransformation(int i)
             {
                 return __meanChaslesTransformations[i];
             }
 
+            /**
+             * @brief Compute the rotation coefficients between the point clouds
+             * @param mostTrustworthyRotationAngle The rotation angle of the most trustworthy point cloud
+             * @param mostTrustworthyPointCloudIndex The index of the most trustworthy point cloud
+             */
+            void ComputeRotationCoefficients(double mostTrustworthyRotationAngle, int mostTrustworthyPointCloudIndex);
+
+            /**
+             * @brief Getter for the rotation coefficient
+             * @param i Index of the first point cloud (index of the row)
+             * @param j Index of the second point cloud (index of the column)
+             * @return Rotation coefficients
+             */
+            double GetRotationCoefficient(int i, int j)
+            {
+                return __rotationCoefficients(i, j);
+            }
             /**
              * @brief Print the mapping matrix to the console
              */
@@ -139,12 +160,16 @@ namespace Referee::Mapping
             std::vector<Referee::Mapping::ChaslesTransformation> __meanChaslesTransformations;
 
             /**
+             * @brief The matrix of the rotation coefficients. The rotation coefficients are by how much we should multiply the rotation angle of the transformation to get a compatible rotation wioth neighboring point clouds
+             */
+            Eigen::MatrixXd __rotationCoefficients;
+
+            /**
              * @brief standard deviation of the rotation angles of the transformation matrices
              */
             std::vector<double> __stdDevRotations;
     };
     
-
 
     /**
      * @brief Create a connectivity matrix from a set of geolocations
@@ -156,7 +181,6 @@ namespace Referee::Mapping
     void CreateConnectivityMatrix(std::vector<Eigen::Vector3d> geolocations, int knn, double maxDistance, std::vector<std::vector<int>>& matrix);
     
 
-
     /**
      * @brief enum to store the different transformation calculation methods. Currently only GlobalMatch is supported: https://doi.org/10.1016/j.isprsjprs.2023.01.013 
     */
@@ -165,10 +189,14 @@ namespace Referee::Mapping
         GlobalMatch,
     };
 
+    /**
+     * @brief enum to store the different refinement methods. Currently only ICP with normals is supported: https://doi.org/10.1109/ICRA40945.2019.8793880
+    */
     enum RefinementMethod
     {
         ICPNormals,
     };
+
 
     /**
      * @brief Computes the 4x4 transformation matrix that transforms the source point cloud to the target point cloud following a given method
@@ -177,6 +205,7 @@ namespace Referee::Mapping
      * @param method the method used in the computation.  
     */
     Eigen::Matrix4d ComputePairwiseTransformation(pcl::PointCloud<pcl::PointNormal>::Ptr source, pcl::PointCloud<pcl::PointNormal>::Ptr target, TransformationComputationMethod method);
+
 
     /**
      * @brief Refines the pairwise transformation using a refinement method
@@ -187,6 +216,7 @@ namespace Referee::Mapping
      */
     Eigen::Matrix4d RefinePairwiseTransformation(pcl::PointCloud<pcl::PointNormal>::Ptr source, pcl::PointCloud<pcl::PointNormal>::Ptr target, RefinementMethod method, double maxCorrespondenceDistance);
 
+
     /**
      * @brief Computes the rotation axis and translation along this axis. This relies on the Chasles theorem. 
      * @param ChaslesTransformation the transformation matrix
@@ -194,4 +224,15 @@ namespace Referee::Mapping
      * @note The rotation axis norm is the rotation angle in radians.
      */
     std::vector<Eigen::Vector3d> ComputeScrewAxis(Eigen::Matrix4d ChaslesTransformation);
+
+    
+    /**
+     * @brief Computes the probability of a value x given a normal distribution with mean and standard deviation
+     * @param x the value to compute the probability for
+     * @param mean the mean of the normal distribution
+     * @param stdDev the standard deviation of the normal distribution
+     * @return the probability of x given the normal distribution
+     */
+    double ComputeProbabilityDensityFunction(double x, double mean, double stdDev);
+
 }

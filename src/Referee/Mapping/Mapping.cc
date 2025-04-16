@@ -97,6 +97,88 @@ namespace Referee::Mapping
         }
     }
 
+    void MappingMatrix::ComputeRotationCoefficients(double mostTrustworthyRotationAngle, int mostTrustworthyPointCloudIndex)
+    {
+        int numberFiles = this->__mappingMatrix.size();
+        Eigen::MatrixXd rotationCoefficients(numberFiles, numberFiles);
+        for(int i = 0; i < numberFiles; i++)
+        {
+            for(int j = 0; j < numberFiles; j++)
+            {
+                rotationCoefficients(i, j) = 0;
+            }
+        }
+
+        for(int i = 0; i < numberFiles; i++)
+        {
+            if(i == mostTrustworthyPointCloudIndex)
+            {
+                continue;
+            }
+            double rotationAngle = this->__mappingMatrix[mostTrustworthyPointCloudIndex][i].GetRotationAngle();
+            if(mostTrustworthyPointCloudIndex < i)
+            {
+                double alpha = (mostTrustworthyRotationAngle/rotationAngle);
+                rotationCoefficients(mostTrustworthyPointCloudIndex, i) = alpha;
+                rotationCoefficients(i, mostTrustworthyPointCloudIndex) = 1-alpha;
+            }
+            else if(mostTrustworthyPointCloudIndex > i)
+            {
+                double alpha = mostTrustworthyRotationAngle/rotationAngle;
+                rotationCoefficients(i, mostTrustworthyPointCloudIndex) = 1-alpha;
+                rotationCoefficients(mostTrustworthyPointCloudIndex, i) = alpha;
+            }
+        }
+        for(int i = 0; i < numberFiles; i++)
+        {
+            if(i == mostTrustworthyPointCloudIndex)
+            {
+                continue;
+            }
+            int nonNulIndice; 
+            Eigen::VectorXd rotationVector = rotationCoefficients.row(i);
+            for(int j = 0; j < rotationVector.size(); j++)
+            {
+                if(rotationVector[j]!=0)
+                {
+                    nonNulIndice = j;
+                    break;
+                }
+            }
+            double rotationAngle = this->__mappingMatrix[i][nonNulIndice].GetRotationAngle() * rotationCoefficients(i, nonNulIndice);
+            for(int j = 0; j < numberFiles; j++)
+            {
+                if(j == nonNulIndice)
+                {
+                    continue;
+                }
+                if(i < j)
+                {
+                    double alpha = rotationAngle / this->__mappingMatrix[i][j].GetRotationAngle();
+                    rotationCoefficients(i, j) = alpha;
+                    rotationCoefficients(j, i) = 1-alpha;
+                }
+                else if(i > j)
+                {
+                    double alpha = rotationAngle / this->__mappingMatrix[j][i].GetRotationAngle();
+                    rotationCoefficients(j, i) = 1-alpha;
+                    rotationCoefficients(i, j) = alpha;
+                }
+            }
+        }
+        this->__rotationCoefficients = rotationCoefficients;
+        std::cout << "Rotation coefficients: " << std::endl;
+        for(int i = 0; i < rotationCoefficients.rows(); i++)
+        {
+            for(int j = 0; j < rotationCoefficients.cols(); j++)
+            {
+                std::cout << rotationCoefficients(i, j) << " ";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
+    }
+
     void MappingMatrix::PrintMeanMatrices()
     {
         for(int i = 0; i < this->__meanChaslesTransformations.size(); i++)
@@ -283,5 +365,12 @@ namespace Referee::Mapping
         screwAxis.push_back(vParallel);
         screwAxis.push_back(intersectionPoint);
         return screwAxis;
+    }
+
+
+    double ComputeProbabilityDensityFunction(double x, double mean, double stdDev)
+    {
+        double exponent = -0.5 * std::pow((x - mean) / stdDev, 2);
+        return (1 / (stdDev * sqrt(2 * M_PI))) * exp(exponent);
     }
 }
