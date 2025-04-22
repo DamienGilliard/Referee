@@ -6,7 +6,7 @@ int main()
     double mean = 0.0;
     double stddev = 1.0;
     double x = 0.0;
-    double p = Referee::Mapping::ComputeProbabilityDensityFunction(x, mean, stddev);
+    double p = Referee::Probability::Compute1DProbabilityDensityFunction(x, mean, stddev);
     if(std::abs(p - (1/std::sqrt(2*M_PI))) < 1e-6)
     {
         std::cout << "Test passed: Probability density function is correct" << std::endl;
