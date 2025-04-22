@@ -75,4 +75,11 @@ namespace Referee::Transformations
      */
     Eigen::Vector3d CalculatePlaneIntersection(std::vector<Eigen::Vector3d> plane1, std::vector<Eigen::Vector3d> plane2, std::vector<Eigen::Vector3d> plane3);
 
+    /**
+     * @brief Falculate the resulting translation of a transformation matrix, meaning the translation induced by the rotation plus the translation of the transformation matrix
+     * @param transformationMatrix Transformation matrix
+     * @param poseOrigin Origin of the pose
+     * @return Eigen::Vector3d Resulting translation of the transformation matrix
+     */
+    Eigen::Vector3d CalculateResultingTranslation(Eigen::Matrix4d transformationMatrix, Eigen::Vector3d poseOrigin);
 } // Referee::Transformations

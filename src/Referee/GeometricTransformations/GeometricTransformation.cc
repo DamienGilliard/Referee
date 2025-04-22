@@ -65,4 +65,11 @@ namespace Referee::Transformations
         return intersectionPoint;
     }
 
+    Eigen::Vector3d CalculateResultingTranslation(Eigen::Matrix4d transformationMatrix, Eigen::Vector3d poseOrigin)
+    {
+        Eigen::Matrix3d rotationMatrix = transformationMatrix.block<3, 3>(0, 0);
+        Eigen::Vector3d translationVector = transformationMatrix.block<3, 1>(0, 3);
+        Eigen::Vector3d resultingTranslation = (rotationMatrix * poseOrigin - poseOrigin) + translationVector;
+        return resultingTranslation;
+    }
 } // Referee::Transformations
