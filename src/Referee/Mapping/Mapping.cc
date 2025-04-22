@@ -367,10 +367,4 @@ namespace Referee::Mapping
         return screwAxis;
     }
 
-
-    double ComputeProbabilityDensityFunction(double x, double mean, double stdDev)
-    {
-        double exponent = -0.5 * std::pow((x - mean) / stdDev, 2);
-        return (1 / (stdDev * sqrt(2 * M_PI))) * exp(exponent);
-    }
 }

@@ -10,3 +10,4 @@
 #include "Referee/Visualisation/Visualisation.hh"
 #include "Referee/GeometricTransformations/GeometricTransformation.hh"
 #include "Referee/Mapping/Mapping.hh"
+#include "Referee/Probability/Probability.hh"

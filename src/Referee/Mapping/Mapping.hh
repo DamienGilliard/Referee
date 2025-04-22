@@ -225,14 +225,4 @@ namespace Referee::Mapping
      */
     std::vector<Eigen::Vector3d> ComputeScrewAxis(Eigen::Matrix4d ChaslesTransformation);
 
-    
-    /**
-     * @brief Computes the probability of a value x given a normal distribution with mean and standard deviation
-     * @param x the value to compute the probability for
-     * @param mean the mean of the normal distribution
-     * @param stdDev the standard deviation of the normal distribution
-     * @return the probability of x given the normal distribution
-     */
-    double ComputeProbabilityDensityFunction(double x, double mean, double stdDev);
-
 }
