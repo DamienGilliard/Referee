@@ -16,4 +16,37 @@ namespace Referee::Probability
         double determinant = covarianceMatrix.determinant();
         return (1 / (std::pow(2 * M_PI, 1.5) * std::sqrt(determinant))) * exp(exponent);
     }
+
+    std::vector<double> Compute1DGradienDescent(std::vector<std::pair<double, double>> pairsOfMeansAndStdDevs, std::vector<double> initialValues, double stepSize, int maxIterations, double tolerance)
+    {
+        std::vector<double> currentValues = initialValues;
+        for (int i = 0; i < maxIterations; ++i)
+        {
+            std::vector<double> gradients(currentValues.size(), 0.0);
+            for (size_t j = 0; j < pairsOfMeansAndStdDevs.size(); ++j)
+            {
+                double mean = pairsOfMeansAndStdDevs[j].first;
+                double stdDev = pairsOfMeansAndStdDevs[j].second;
+                for (size_t k = 0; k < currentValues.size(); ++k)
+                {
+                    gradients[k] = Compute1DProbabilityDensityFunction(currentValues[k]+(stepSize/2000), mean, stdDev) - Compute1DProbabilityDensityFunction(currentValues[k]-(stepSize/2000), mean, stdDev);
+                    gradients[k] /= stepSize*0.001;
+                }
+            }
+            for (size_t k = 0; k < currentValues.size(); ++k)
+            {
+                currentValues[k] += stepSize * gradients[k];
+            }
+            double maxChange = 0.0;
+            for (size_t k = 0; k < currentValues.size(); ++k)
+            {
+                maxChange = std::max(maxChange, std::abs(gradients[k]));
+            }
+            if (maxChange < tolerance)
+            {
+                break;
+            }
+        }
+        return currentValues;
+    }
 }
