@@ -191,9 +191,9 @@ namespace Referee::Mapping
 
     void CreateConnectivityMatrix(std::vector<Eigen::Vector3d> geolocations, int knn, double maxDistance, std::vector<std::vector<int>>& matrix)
     {
-        std::vector<std::vector<double>> distances;
+        std::vector<std::vector<std::pair<int, double>>> distancesToOtherPcs;
         std::vector<std::vector<int>> totalMatrix;
-        distances.resize(geolocations.size());
+        distancesToOtherPcs.resize(geolocations.size());
         totalMatrix.resize(geolocations.size());
         matrix.resize(geolocations.size());
 
@@ -206,7 +206,8 @@ namespace Referee::Mapping
                     // Calculate distance between geolocations
                     double distance = std::pow(geolocations[i].x() - geolocations[j].x(), 2) + std::pow(geolocations[i].y() - geolocations[j].y(), 2) + std::pow(geolocations[i].z() - geolocations[j].z(), 2);
                     distance = sqrt(distance);
-                    distances[i].push_back(distance);
+                    std::cout << "Distance between " << i << " and " << j << ": " << distance << std::endl;
+                    distancesToOtherPcs[i].push_back(std::make_pair(j, distance));
                     totalMatrix[i].push_back(j);
                 }
             }
@@ -216,12 +217,23 @@ namespace Referee::Mapping
         for(int i = 0; i < totalMatrix.size(); i++)
         {
             std::vector<int> neighbors = totalMatrix[i];
-            std::sort(neighbors.begin(), neighbors.end(), [&distances, i](int a, int b) { return distances[i][a] < distances[i][b]; });
-            matrix[i].resize(knn);
-            for(int j = 0; j < knn; j++)
-            {
-                matrix[i][j] = neighbors[j];
+            // Sort distancesToOtherPcs[i] based on the distance
+            std::sort(distancesToOtherPcs[i].begin(), distancesToOtherPcs[i].end(), [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
+                return a.second < b.second;
+            });
+
+            // Select the k nearest neighbors
+            matrix[i].resize(std::min(knn, static_cast<int>(distancesToOtherPcs[i].size())));
+            for (int j = 0; j < matrix[i].size(); j++) {
+                matrix[i][j] = distancesToOtherPcs[i][j].first; // Extract the index of the neighbor
             }
+
+            // Debugging output
+            std::cout << "Neighbors for " << i << ": ";
+            for (int j = 0; j < matrix[i].size(); j++) {
+                std::cout << matrix[i][j] << " ";
+            }
+            std::cout << std::endl;
         }
     }
 
