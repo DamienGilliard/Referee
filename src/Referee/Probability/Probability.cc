@@ -33,9 +33,16 @@ namespace Referee::Probability
                     gradients[k] /= stepSize*0.001;
                 }
             }
+            double meanGradient = 0.0;
+            for (size_t k = 0; k < gradients.size(); ++k)
+            {
+                meanGradient += gradients[k];
+            }
+            meanGradient /= static_cast<double>(gradients.size());
+
             for (size_t k = 0; k < currentValues.size(); ++k)
             {
-                currentValues[k] += stepSize * gradients[k];
+                currentValues[k] += stepSize * meanGradient;
             }
             double maxChange = 0.0;
             for (size_t k = 0; k < currentValues.size(); ++k)
