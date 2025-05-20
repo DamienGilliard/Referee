@@ -50,8 +50,6 @@ namespace Referee::Transformations
             plane3Origin = Eigen::Vector3d(0, 0, 0);
         }
 
-        std::cout << "A: " << A << std::endl;
-
         Eigen::Vector3d b;
         b << plane1Origin.dot(plane1Normal), plane2Origin.dot(plane2Normal), plane3Origin.dot(plane3Normal);
 
