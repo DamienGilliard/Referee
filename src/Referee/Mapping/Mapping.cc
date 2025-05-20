@@ -109,63 +109,101 @@ namespace Referee::Mapping
             }
         }
 
-        for(int i = 0; i < numberFiles; i++)
+        for(int i : this->__connectivityMatrix[mostTrustworthyPointCloudIndex])
         {
             if(i == mostTrustworthyPointCloudIndex)
             {
                 continue;
             }
             double rotationAngle = this->__mappingMatrix[mostTrustworthyPointCloudIndex][i].GetRotationAngle();
-            if(mostTrustworthyPointCloudIndex < i)
-            {
-                double alpha = (mostTrustworthyRotationAngle/rotationAngle);
-                rotationCoefficients(mostTrustworthyPointCloudIndex, i) = alpha;
-                rotationCoefficients(i, mostTrustworthyPointCloudIndex) = 1-alpha;
-            }
-            else if(mostTrustworthyPointCloudIndex > i)
-            {
-                double alpha = mostTrustworthyRotationAngle/rotationAngle;
-                rotationCoefficients(i, mostTrustworthyPointCloudIndex) = 1-alpha;
-                rotationCoefficients(mostTrustworthyPointCloudIndex, i) = alpha;
-            }
+            std::cout << "[DEBUG]Rotation angle between point cloud " << mostTrustworthyPointCloudIndex << " and point cloud " << i << ": " << rotationAngle << std::endl;
+
+            double alpha = (mostTrustworthyRotationAngle/rotationAngle);
+            rotationCoefficients(mostTrustworthyPointCloudIndex, i) = alpha;
+
         }
-        for(int i = 0; i < numberFiles; i++)
+
+        // starting with the most trustworthy point cloud, onwards,
+        for (int i = mostTrustworthyPointCloudIndex; i < numberFiles; i++)
         {
-            if(i == mostTrustworthyPointCloudIndex)
+            // we store the connected point clouds
+            std::vector<int> connectedPC = this->__connectivityMatrix[i];
+            // for each connected point cloud, we initialize the row
+            int matchedIndex;
+            double rotationAngle;
+            for (int j : connectedPC)
             {
-                continue;
-            }
-            int nonNulIndice; 
-            Eigen::VectorXd rotationVector = rotationCoefficients.row(i);
-            for(int j = 0; j < rotationVector.size(); j++)
-            {
-                if(rotationVector[j]!=0)
+                // we verify if the connectivity is reciprocal (i.e. if j is connected to i). 
+                // because we work with knn, it is possible that i is connected to j, but j is not connected to i
+                for (int k : this->__connectivityMatrix[j])
                 {
-                    nonNulIndice = j;
-                    break;
+                    // if indeed it is reciprocal
+                    if (i == k)
+                    {
+                        double alpha = rotationCoefficients(j, i);
+                        if (rotationCoefficients(j, i) != 0) 
+                        {
+                            rotationCoefficients(i, j) = 1 - alpha;
+                            matchedIndex = j;
+                            rotationAngle = this->__mappingMatrix[i][j].GetRotationAngle() * rotationCoefficients(i, j);
+                        } 
+                        else 
+                        {
+                            std::cerr << "Warning: rotationCoefficients(" << j << ", " << i << ") is zero or uninitialized." << std::endl;
+                        }
+                    }
                 }
             }
-            double rotationAngle = this->__mappingMatrix[i][nonNulIndice].GetRotationAngle() * rotationCoefficients(i, nonNulIndice);
-            for(int j = 0; j < numberFiles; j++)
+            for (int j : connectedPC)
             {
-                if(j == nonNulIndice)
+                // if the connectivity is not reciprocal, we set the rotation coefficient to 0
+                if (j != matchedIndex)
                 {
-                    continue;
-                }
-                if(i < j)
-                {
-                    double alpha = rotationAngle / this->__mappingMatrix[i][j].GetRotationAngle();
-                    rotationCoefficients(i, j) = alpha;
-                    rotationCoefficients(j, i) = 1-alpha;
-                }
-                else if(i > j)
-                {
-                    double alpha = rotationAngle / this->__mappingMatrix[j][i].GetRotationAngle();
-                    rotationCoefficients(j, i) = 1-alpha;
-                    rotationCoefficients(i, j) = alpha;
+                    rotationCoefficients(i, j) = rotationAngle / this->__mappingMatrix[i][j].GetRotationAngle();
                 }
             }
         }
+        // starting with the most trustworthy point cloud, backwards,
+        for (int i = mostTrustworthyPointCloudIndex; i >= 0; i--)
+        {
+            // we store the connected point clouds
+            std::vector<int> connectedPC = this->__connectivityMatrix[i];
+            // for each connected point cloud, we initialize the row
+            int matchedIndex;
+            double rotationAngle;
+            for (int j : connectedPC)
+            {
+                // we verify if the connectivity is reciprocal (i.e. if j is connected to i). 
+                // because we work with knn, it is possible that i is connected to j, but j is not connected to i
+                for (int k : this->__connectivityMatrix[j])
+                {
+                    // if indeed it is reciprocal
+                    if (i == k)
+                    {
+                        double alpha = rotationCoefficients(j, i);
+                        if (rotationCoefficients(j, i) != 0) 
+                        {
+                            rotationCoefficients(i, j) = 1 - alpha;
+                            matchedIndex = j;
+                            rotationAngle = this->__mappingMatrix[i][j].GetRotationAngle() * rotationCoefficients(i, j);
+                        } 
+                        else 
+                        {
+                            std::cerr << "Warning: rotationCoefficients(" << j << ", " << i << ") is zero or uninitialized." << std::endl;
+                        }
+                    }
+                }
+            }
+            for (int j : connectedPC)
+            {
+                // if the connectivity is not reciprocal, we set the rotation coefficient to 0
+                if (j != matchedIndex)
+                {
+                    rotationCoefficients(i, j) = rotationAngle / this->__mappingMatrix[i][j].GetRotationAngle();
+                }
+            }
+        }
+    
         this->__rotationCoefficients = rotationCoefficients;
         std::cout << "Rotation coefficients: " << std::endl;
         for(int i = 0; i < rotationCoefficients.rows(); i++)

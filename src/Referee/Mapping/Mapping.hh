@@ -70,6 +70,16 @@ namespace Referee::Mapping
                 }
             }
 
+            void SetConnectivityMatrix(std::vector<std::vector<int>> connectivityMatrix)
+            {
+                this->__connectivityMatrix = connectivityMatrix;
+            }
+
+            std::vector<std::vector<int>> GetConnectivityMatrix()
+            {
+                return this->__connectivityMatrix;
+            }
+
             /**
              * @brief Getter of the transformation matrix between two point clouds
              * @param i Index of the first point cloud
@@ -168,6 +178,11 @@ namespace Referee::Mapping
              * @brief standard deviation of the rotation angles of the transformation matrices
              */
             std::vector<double> __stdDevRotations;
+
+            /**
+             * @brief for each point cloud, the indices of the other point clouds with which transformations were computed
+             */
+            std::vector<std::vector<int>> __connectivityMatrix;
     };
     
 
