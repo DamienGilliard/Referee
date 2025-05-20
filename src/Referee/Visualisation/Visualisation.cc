@@ -60,6 +60,7 @@ namespace Referee::FileBasedVisualisation
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     }
+
     void Visualisation::ExportImage(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud, const std::string& imagePath)
     {
         pcl::visualization::PCLVisualizer viewer("Cloud Viewer");
@@ -73,6 +74,7 @@ namespace Referee::FileBasedVisualisation
         viewer.spinOnce(100);
         viewer.saveScreenshot(imagePath);
     }
+
     void Visualisation::VisualiseTransformations(std::vector<std::pair<Eigen::Vector3d, Eigen::Matrix4d>> originsAndTransformations, pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud, const std::string& imageFileName)
     {
         pcl::visualization::PCLVisualizer viewer("Cloud Viewer");
@@ -85,14 +87,14 @@ namespace Referee::FileBasedVisualisation
         viewer.setCameraPosition(0, 0, 900, 0, 0, 0, 0, 1, 0);
         viewer.setBackgroundColor(1.0, 1.0, 1.0);
         viewer.getRenderWindow()->GetRenderers()->GetFirstRenderer()->GetActiveCamera()->SetParallelProjection(1);
-        viewer.getRenderWindow()->GetRenderers()->GetFirstRenderer()->GetActiveCamera()->SetParallelScale(50);
+        viewer.getRenderWindow()->GetRenderers()->GetFirstRenderer()->GetActiveCamera()->SetParallelScale(40);
 
         int count = 0;
         for (const auto& originAndTransformation : originsAndTransformations)
         {
             Eigen::Vector3d initialOrigin = originAndTransformation.first;
             pcl::PointXYZ point(initialOrigin.x(), initialOrigin.y(), initialOrigin.z());
-            std::vector<pcl::PointXYZ> axesEnds = Referee::FileBasedVisualisation::CreateCoordinateSystem(initialOrigin, 4.0);
+            std::vector<pcl::PointXYZ> axesEnds = Referee::FileBasedVisualisation::CreateCoordinateSystem(initialOrigin, 8.0);
             std::vector<pcl::PointXYZ> transformedAxesEnds(originsAndTransformations.size());
             Eigen::Vector3d transformedOrigin = originAndTransformation.second.block<3, 3>(0, 0) * initialOrigin + originAndTransformation.second.block<3, 1>(0, 3) - originAndTransformation.first;
             pcl::PointXYZ transformedPoint(transformedOrigin.x(), transformedOrigin.y(), transformedOrigin.z());
