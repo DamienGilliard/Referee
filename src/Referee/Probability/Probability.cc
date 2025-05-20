@@ -1,5 +1,6 @@
 #include "Probability.hh"
 #include <cmath>
+#include <iostream>
 
 namespace Referee::Probability
 {
@@ -29,8 +30,8 @@ namespace Referee::Probability
                 double stdDev = pairsOfMeansAndStdDevs[j].second;
                 for (size_t k = 0; k < currentValues.size(); ++k)
                 {
-                    gradients[k] = Compute1DProbabilityDensityFunction(currentValues[k]+(stepSize/2000), mean, stdDev) - Compute1DProbabilityDensityFunction(currentValues[k]-(stepSize/2000), mean, stdDev);
-                    gradients[k] /= stepSize*0.001;
+                    gradients[k] = Compute1DProbabilityDensityFunction(currentValues[k]+(stepSize/2), mean, stdDev) - Compute1DProbabilityDensityFunction(currentValues[k]-(stepSize/2), mean, stdDev);
+                    gradients[k] /= stepSize;
                 }
             }
             double meanGradient = 0.0;
@@ -42,14 +43,9 @@ namespace Referee::Probability
 
             for (size_t k = 0; k < currentValues.size(); ++k)
             {
-                currentValues[k] += stepSize * meanGradient;
+                currentValues[k] += (stepSize * meanGradient);
             }
-            double maxChange = 0.0;
-            for (size_t k = 0; k < currentValues.size(); ++k)
-            {
-                maxChange = std::max(maxChange, std::abs(gradients[k]));
-            }
-            if (maxChange < tolerance)
+            if (std::abs((stepSize * meanGradient)) < tolerance)
             {
                 break;
             }
