@@ -1,4 +1,5 @@
 #include <Eigen/Geometry>
+#include <numeric>
 
 namespace Referee::Probability
 {
