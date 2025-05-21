@@ -217,6 +217,24 @@ namespace Referee::Mapping
         std::cout << std::endl;
     }
 
+    std::vector<double> MappingMatrix::GetInitialRotationAngles()
+    {
+        std::vector<double> initialRotationAngles;
+        for(int i = 0; i < this->__mappingMatrix.size(); i++)
+        {
+            for (int j = 0; j < this->__mappingMatrix[i].size(); j++)
+            {
+                if(this->__mappingMatrix[i][j].GetRotationAngle() != 0)
+                {
+                    double angle = this->__mappingMatrix[i][j].GetRotationAngle() * this->GetRotationCoefficient(i, j);
+                    initialRotationAngles.push_back(angle);
+                    break;
+                }
+            }
+        }
+        return initialRotationAngles;
+    }
+
     void MappingMatrix::PrintMeanMatrices()
     {
         for(int i = 0; i < this->__meanChaslesTransformations.size(); i++)

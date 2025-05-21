@@ -148,6 +148,12 @@ namespace Referee::Mapping
             {
                 return __rotationCoefficients(i, j);
             }
+
+            /**
+             * @brief Getter for the rotation angles from the rotation coefficients 
+             * @return Rotation angles
+             */
+            std::vector<double> GetInitialRotationAngles();
             /**
              * @brief Print the mapping matrix to the console
              */
