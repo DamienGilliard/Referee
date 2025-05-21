@@ -79,30 +79,35 @@ int main()
     mappingMatrix.CalculateMeanTransformationMatrices();
     mappingMatrix.PrintMeanMatrices();
 
-    std::vector<std::tuple<int, double, double>> rotationsPerPC;
+    std::vector<std::tuple<int, double, double>> IDMeansAndStdDevs;
     for(int i = 0; i < numberFiles; i++)
     {
-        rotationsPerPC.push_back(std::make_tuple(i, mappingMatrix.GetMeanRotation(i), mappingMatrix.GetStdDevRotation(i)));
+        IDMeansAndStdDevs.push_back(std::make_tuple(i, mappingMatrix.GetMeanRotation(i), mappingMatrix.GetStdDevRotation(i)));
     }
 
-    std::sort(rotationsPerPC.begin(), rotationsPerPC.end(), [](const std::tuple<int, double, double>& a, const std::tuple<int, double, double>& b) {
-        return std::get<2>(a) > std::get<2>(b);
+    std::sort(IDMeansAndStdDevs.begin(), IDMeansAndStdDevs.end(), [](const std::tuple<int, double, double>& a, const std::tuple<int, double, double>& b) {
+        return std::get<2>(a) < std::get<2>(b);
     });
 
-    mappingMatrix.ComputeRotationCoefficients(std::get<1>(rotationsPerPC[0]), std::get<0>(rotationsPerPC[0]));
-
-    std::cout << "Probabilities of rotation angles: " << std::endl;
-    for(int i = 0; i < rotationsPerPC.size(); i++)
+    mappingMatrix.ComputeRotationCoefficients(std::get<1>(IDMeansAndStdDevs[0]), std::get<0>(IDMeansAndStdDevs[0]));
+    std::vector<std::pair<double, double>> meansAndStdDevs(IDMeansAndStdDevs.size());
+    for(int i = 0; i < IDMeansAndStdDevs.size(); i++)
     {
-        std::cout << "For Point cloud " << std::get<0>(rotationsPerPC[i]) << std::endl;
-        int indice = 0;
-        double rotationCoefficient = mappingMatrix.GetRotationCoefficient(i, indice);
+        meansAndStdDevs[std::get<0>(IDMeansAndStdDevs[i])].first = std::get<1>(IDMeansAndStdDevs[i]);
+        meansAndStdDevs[std::get<0>(IDMeansAndStdDevs[i])].second = std::get<2>(IDMeansAndStdDevs[i]);
+    }
+    std::cout << "Probabilities of rotation angles: " << std::endl;
+    for(int i = 0; i < numberFiles; i++)
+    {
+        std::cout << "For Point cloud " << i << std::endl;
+        int column = 0;
+        double rotationCoefficient = mappingMatrix.GetRotationCoefficient(i, column);
         if(rotationCoefficient == 0)
         {
-            indice = 1;
-            rotationCoefficient = mappingMatrix.GetRotationCoefficient(i, indice);
+            column = 1;
+            rotationCoefficient = mappingMatrix.GetRotationCoefficient(i, column);
         }
-        double p = Referee::Probability::Compute1DProbabilityDensityFunction(rotationCoefficient * mappingMatrix.GetChaslesTransformation(i, indice).GetRotationAngle(), std::get<1>(rotationsPerPC[i]), std::get<2>(rotationsPerPC[i]));
+        double p = Referee::Probability::Compute1DProbabilityDensityFunction(rotationCoefficient * mappingMatrix.GetChaslesTransformation(i, column).GetRotationAngle(), meansAndStdDevs[i].first, meansAndStdDevs[i].second);
         std::cout << "Probability of rotation angle: " << p << std::endl;
     }
 
@@ -110,41 +115,33 @@ int main()
     //                                                 ROTATIONS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::vector<double> initialRotationAngles;
-    for(int i = 0; i < numberFiles; i++)
+    std::vector<double> initialRotationAngles = mappingMatrix.GetInitialRotationAngles();
+    std::cout << "Initial rotation angles: " << std::endl;
+    for(int i = 0; i < initialRotationAngles.size(); i++)
     {
-        for (int j = 0; j < numberFiles; j++)
-        {
-            if(mappingMatrix.GetRotationCoefficient(i, j) != 0)
-            {
-                double angle = mappingMatrix.GetChaslesTransformation(i, j).GetRotationAngle() * mappingMatrix.GetRotationCoefficient(i, j);
-                initialRotationAngles.push_back(angle);
-                break;
-            }
-        }
-        // double angle = mappingMatrix.GetChaslesTransformation(i, indice).GetRotationAngle();
-        // if(angle == 0)
-        // {
-        //     indice = 1;
-        //     angle = mappingMatrix.GetChaslesTransformation(i, indice).GetRotationAngle();
-        // }
-        // initiaRotationAngles.push_back(angle * mappingMatrix.GetRotationCoefficient(i, indice));
         std::cout << "Initial angle to be applied to point cloud " << i << ": " << initialRotationAngles[i] << std::endl;
     }
     std::cout << "Corrected angles to be applied: " << std::endl;
-    std::vector<std::pair<double, double>> meansAndStdDevs;
-    for (int i = 0; i < rotationsPerPC.size(); i++)
-    {
-        double mean = std::get<1>(rotationsPerPC[i]);
-        double stdDev = std::get<2>(rotationsPerPC[i]);
-        std::cout << "Mean and stdDev of rotation angles for point cloud " << std::get<0>(rotationsPerPC[i]) << ": " << mean << ", " << stdDev << std::endl;
-        meansAndStdDevs.push_back(std::make_pair(mean, stdDev));
-    }
-    std::vector<double> correctedRotation = Referee::Probability::Compute1DGradienDescent(meansAndStdDevs, initialRotationAngles, 0.001, 1000, 0.00001);
+    std::vector<double> correctedAngles = Referee::Probability::Compute1DGradienDescent(meansAndStdDevs, initialRotationAngles, 0.00001, 10000, 0.000001);
 
     for(int i = 0; i < numberFiles; i++)
     {
-        std::cout << "Corrected angle to be applied to point cloud " << i << ": " << correctedRotation[i] << std::endl;
+        std::cout << "Corrected angle to be applied to point cloud " << i << ": " << correctedAngles[i] << std::endl;
+    }
+
+    std::ofstream outputFile("rotationAnglesAndStandardDeviations.txt");
+    if (outputFile.is_open())
+    {
+        outputFile << "# PointcloudID, meanRotationAngle, stdDevRotationAngle, correctedRotationAngle" << std::endl;
+        for (int i = 0; i < numberFiles; i++)
+        {
+            outputFile << i << ", " << meansAndStdDevs[i].first << ", " << meansAndStdDevs[i].second << ", " << correctedAngles[i] << std::endl;
+        }
+        outputFile.close();
+    }
+    else
+    {
+        std::cerr << "Unable to open file" << std::endl;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -159,7 +156,7 @@ int main()
             Eigen::Vector3d translationVector = translationVectors[j];
             Eigen::Vector3d rotationAxis = mappingMatrix.GetChaslesTransformation(i, j).GetRotationAxis();
             Eigen::Matrix4d transformationMatrix = Eigen::Matrix4d::Identity();
-            transformationMatrix.block<3, 3>(0, 0) = Eigen::AngleAxisd(correctedRotation[j], rotationAxis).toRotationMatrix();
+            transformationMatrix.block<3, 3>(0, 0) = Eigen::AngleAxisd(correctedAngles[j], rotationAxis).toRotationMatrix();
             Eigen::Vector3d correctionPostRotation = Referee::Transformations::CalculateResultingTranslation(transformationMatrix, initialTranslationVectors[i] + translationVector - initialTranslationVectors[j]);
             translationVectors[j] = translationVector + correctionPostRotation;
         }
@@ -254,23 +251,23 @@ int main()
         Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointXYZRGB>(coloredPointCloud, 0.2f);
         for(int j = 0; j < coloredPointCloud->size(); j++)
         {
-            coloredPointCloud->points[j].r = 50 + i*50;
-            coloredPointCloud->points[j].g = 50 ;
-            coloredPointCloud->points[j].b = 250 - i*50;
+            coloredPointCloud->points[j].r = 150 + i*25;
+            coloredPointCloud->points[j].g = 150 ;
+            coloredPointCloud->points[j].b = 250 - i*25;
         }
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredPointCloudTransformed(new pcl::PointCloud<pcl::PointXYZRGB>);
 
         Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
-        Eigen::Matrix3d rotationMatrix = Eigen::AngleAxis<double>(correctedRotation[i], Eigen::Vector3d(0, 0, 1)).toRotationMatrix();
+        Eigen::Matrix3d rotationMatrix = Eigen::AngleAxis<double>(correctedAngles[i], Eigen::Vector3d(0, 0, 1)).toRotationMatrix();
         transform.block<3, 3>(0, 0) = rotationMatrix;
-        if(std::isinf(finalTranslationVectorsPerPc[i][0]))
-        {
-            transform.block<3, 1>(0, 3) = initialTranslationVectors[i] + finalTranslationVectorsPerPc[i];
-        }
-        else
-        {
-            transform.block<3, 1>(0, 3) = initialTranslationVectors[i];
-        }
+        // if(std::isinf(finalTranslationVectorsPerPc[i][0]))
+        // {
+        //     transform.block<3, 1>(0, 3) = initialTranslationVectors[i] + finalTranslationVectorsPerPc[i];
+        // }
+        // else
+        // {
+        //     transform.block<3, 1>(0, 3) = initialTranslationVectors[i];
+        // }
         transform.block<3, 1>(0, 3) = initialTranslationVectors[i] + finalTranslationVectorsPerPc[i];
         finalTransformations.push_back(transform);
         Referee::Transformations::TransformPointCloud<pcl::PointXYZRGB>(coloredPointCloud, transform);
