@@ -4,12 +4,7 @@ int main()
 {
     std::vector<std::string> geolocationFiles = Referee::Utils::FileIterators::GetFilesInDirectory("../../tests/TestData/", ".petitpoucet");
     Referee::Utils::CoordinateSystem::CoordinateSystem coordSys = Referee::Utils::CoordinateSystem::CoordinateSystem::LV95;
-    std::vector<Eigen::Vector3d> translationVectors;
-    for (const auto& file : geolocationFiles) 
-    {
-        Eigen::Vector3d translationVector = Referee::Utils::FileIterators::GetTranslationVectorsFromFile(file, coordSys);
-        translationVectors.push_back(translationVector);
-    }
+    std::vector<Eigen::Vector3d> translationVectors = Referee::Utils::FileIterators::GetTranslationVectorsFromFiles(geolocationFiles, coordSys);
     Eigen::Vector3d meanTranslation = Referee::Transformations::RecenterTranslationVectors(translationVectors);
     if(translationVectors[0].norm() != 0)
     {

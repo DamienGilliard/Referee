@@ -84,9 +84,17 @@ namespace Referee
              * latitude; longitude; altitude
              * @param filePath Path to the file
              * @param coordSys Coordinate system we want to convert to
+             * @return Eigen::Vector3d Vector of translation vectors
+             */
+            Eigen::Vector3d GetTranslationVectorFromFile(const std::string& filePath, Referee::Utils::CoordinateSystem::CoordinateSystem coordSys);
+
+            /**
+             * @brief Get translation vectors from a vector of files. This vector is supposed to contain the paths to the files.
+             * @param filePaths Vector of file paths
+             * @param coordSys Coordinate system we want to convert to
              * @return std::vector<Eigen::Vector3d> Vector of translation vectors
              */
-            Eigen::Vector3d GetTranslationVectorsFromFile(const std::string& filePath, Referee::Utils::CoordinateSystem::CoordinateSystem coordSys);
+            std::vector<Eigen::Vector3d> GetTranslationVectorsFromFiles(const std::vector<std::string>& filePaths, Referee::Utils::CoordinateSystem::CoordinateSystem coordSys);
         } // FileIterators
 
         namespace Filtering

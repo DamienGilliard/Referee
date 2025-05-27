@@ -87,7 +87,7 @@ namespace Referee::Utils
             return files;
         }
 
-        Eigen::Vector3d GetTranslationVectorsFromFile(const std::string& filePath, Referee::Utils::CoordinateSystem::CoordinateSystem coordSys)
+        Eigen::Vector3d GetTranslationVectorFromFile(const std::string& filePath, Referee::Utils::CoordinateSystem::CoordinateSystem coordSys)
         {
             Eigen::Vector3d translationVector;
             std::ifstream fileStream(filePath);
@@ -111,6 +111,17 @@ namespace Referee::Utils
                 translationVector.z() = z;
             }
             return translationVector;
+        }
+
+        std::vector<Eigen::Vector3d> GetTranslationVectorsFromFiles(const std::vector<std::string>& filePaths, Referee::Utils::CoordinateSystem::CoordinateSystem coordSys)
+        {
+            std::vector<Eigen::Vector3d> translationVectors;
+            for (const auto& filePath : filePaths) 
+            {
+                Eigen::Vector3d translationVector = GetTranslationVectorFromFile(filePath, coordSys);
+                translationVectors.push_back(translationVector);
+            }
+            return translationVectors;
         }
     }
     

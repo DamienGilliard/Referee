@@ -14,12 +14,7 @@ int main()
     }
 
     Referee::Utils::CoordinateSystem::CoordinateSystem coordSys = Referee::Utils::CoordinateSystem::CoordinateSystem::LV95;
-    std::vector<Eigen::Vector3d> initialTranslationVectors;
-    for (const auto& file : geolocationFiles) 
-    {
-        Eigen::Vector3d translationVector = Referee::Utils::FileIterators::GetTranslationVectorsFromFile(file, coordSys);
-        initialTranslationVectors.push_back(translationVector);
-    }
+    std::vector<Eigen::Vector3d> initialTranslationVectors = Referee::Utils::FileIterators::GetTranslationVectorsFromFiles(geolocationFiles, coordSys);
 
     Referee::Mapping::MappingMatrix mappingMatrix(numberFiles);
 
