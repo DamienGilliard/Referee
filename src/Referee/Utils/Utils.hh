@@ -164,5 +164,17 @@ namespace Referee
              */
             void CalculateNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, pcl::PointCloud<pcl::Normal>::Ptr normals, int k);
         } // NormalCalculation
+    
+        namespace IO
+        {
+            /**
+             * @brief Save rotation angles and their standard deviations, as well as initial rotation to a file
+             * 
+             * @param fileName Name of the file to save to
+             * @param meansAndStdDevs Vector of pairs containing mean rotation angles and their standard deviations
+             * @param angles Vector of rotation angles
+             */
+            void SaveRotationAnglesAndStdDevs(const std::string& fileName, const std::vector<std::pair<double, double>>& meansAndStdDevs, const std::vector<double>& correctedAngles);
+        }
     } // Utils
 }

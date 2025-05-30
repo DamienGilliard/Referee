@@ -156,4 +156,25 @@ namespace Referee::Utils
             std::cout << "Normals calculated." << std::endl;
         }
     }
+
+    namespace IO
+    {
+        void SaveRotationAnglesAndStdDevs(const std::string& filename, const std::vector<std::pair<double, double>>& meansAndStdDevs, const std::vector<double>& correctedAngles)
+        {
+            std::ofstream outputFile(filename);
+            if (outputFile.is_open())
+            {
+                outputFile << "# PointcloudID, meanRotationAngle, stdDevRotationAngle, correctedRotationAngle" << std::endl;
+                for (size_t i = 0; i < meansAndStdDevs.size(); i++)
+                {
+                    outputFile << i << ", " << meansAndStdDevs[i].first << ", " << meansAndStdDevs[i].second << ", " << correctedAngles[i] << std::endl;
+                }
+                outputFile.close();
+            }
+            else
+            {
+                std::cerr << "Unable to open file: " + filename << std::endl;
+            }
+        }
+    }
 }
