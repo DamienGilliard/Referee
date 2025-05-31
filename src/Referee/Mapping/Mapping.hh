@@ -13,6 +13,28 @@
 
 namespace Referee::Mapping
 {
+    enum class GlobalCoordinateSystem
+    {
+        LV95, // Swiss coordinate system
+        WGS84, // World coordinate system
+        Local // Local coordinate system
+    };
+
+    class Pose
+    {
+        public:
+            Pose() = default;
+            Pose(Eigen::Vector3d position, Eigen::Quaterniond orientation)
+                : __position(position), __orientation(orientation) {}
+
+            Eigen::Vector3d GetPosition() const { return __position; }
+            Eigen::Quaterniond GetOrientation() const { return __orientation; }
+
+        private:
+            Eigen::Vector3d __position; // Position in the global coordinate system
+            Eigen::Quaterniond __orientation; // Orientation in the global coordinate system
+    };
+
     /**
      * @brief Thic class stores a transformation in 3D in the form of a rotation axis, a point on this axis, a rotation along this axis, and a translation along this axis.
      * 
