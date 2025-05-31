@@ -13,7 +13,7 @@
 
 namespace Referee::Mapping
 {
-    enum class GlobalCoordinateSystem
+    enum class CoordinateSystemType
     {
         LV95, // Swiss coordinate system
         WGS84, // World coordinate system
@@ -35,6 +35,60 @@ namespace Referee::Mapping
             Eigen::Quaterniond __orientation; // Orientation in the global coordinate system
     };
 
+    /**
+     * @brief Singleton class to store the global coordinate system
+     * 
+     * This class is used to store the global coordinate system in which all point clouds are transformed.
+     * It is a singleton class, meaning that there is only one instance of this class in the whole program.
+     */
+    class GlobalCoordinateSystem
+    {
+        public:
+            /**
+             * @brief Get the instance of the global coordinate system
+             * @return GlobalCoordinateSystem instance
+             */
+            static GlobalCoordinateSystem& GetInstance()
+            {
+                if(!__instance){__instance = new GlobalCoordinateSystem();}
+                return *__instance;
+            }
+            static GlobalCoordinateSystem& CreateGlobalCoordinateSystem(CoordinateSystemType type = CoordinateSystemType::WGS84,
+                                                                       Eigen::Vector3d origin = Eigen::Vector3d::Zero(),
+                                                                       Eigen::Quaterniond orientation = Eigen::Quaterniond::Identity())
+            {
+                if(!__instance){__instance = new GlobalCoordinateSystem(type, origin, orientation);}
+                return *__instance;
+            }
+        private:
+            GlobalCoordinateSystem(CoordinateSystemType type = CoordinateSystemType::WGS84,
+                                   Eigen::Vector3d origin = Eigen::Vector3d::Zero(),
+                                   Eigen::Quaterniond orientation = Eigen::Quaterniond::Identity())
+                : __type(type), __origin(origin), __orientation(orientation) {}
+            GlobalCoordinateSystem(const GlobalCoordinateSystem&) = delete; // prevent copying
+            GlobalCoordinateSystem& operator=(const GlobalCoordinateSystem&) = delete; // prevent assignment
+            GlobalCoordinateSystem(GlobalCoordinateSystem&&) = delete; // prevent moving
+            GlobalCoordinateSystem& operator=(GlobalCoordinateSystem&&) = delete; // prevent moving
+            ~GlobalCoordinateSystem() = default; // destructor
+            /**
+             * @brief Type of the global coordinate system
+             */
+            CoordinateSystemType __type = CoordinateSystemType::WGS84; // type of the global coordinate system
+            /**
+             * @brief Origin of the global coordinate system
+             */
+            Eigen::Vector3d __origin = Eigen::Vector3d::Zero(); // origin of the global coordinate system
+            /**
+             * @brief Orientation of the global coordinate system
+             */
+            Eigen::Quaterniond __orientation = Eigen::Quaterniond::Identity(); // orientation of the global coordinate system
+            /**
+             * @brief Static instance of the global coordinate system
+             * 
+             * This is a static instance of the class, which is used to ensure that there is only one instance of the class in the whole program.
+             */
+            static GlobalCoordinateSystem* __instance; // static instance of the class
+    };
     /**
      * @brief Thic class stores a transformation in 3D in the form of a rotation axis, a point on this axis, a rotation along this axis, and a translation along this axis.
      * 
