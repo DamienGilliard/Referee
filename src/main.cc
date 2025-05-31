@@ -64,9 +64,8 @@ int main()
             std::cout << "Transformation matrix: " << transformationMatrix << std::endl;
             Eigen::Vector3d translation = Referee::Transformations::CalculateResultingTranslation(transformationMatrix, initialTranslationVectors[i]);
             translationVectorsPerPC[i][matrix[i][j]] = translation;
-            Referee::Mapping::ChaslesTransformation chaslesTransformation(transformationMatrix);
-            mappingMatrix.SetChaslesTransformation(i, matrix[i][j], chaslesTransformation);
-            std::cout << "Chasles rotation center: " << chaslesTransformation.GetPointOnAxis() << std::endl;
+            Referee::Mapping::Transformation Transformation(transformationMatrix);
+            mappingMatrix.SetTransformation(i, matrix[i][j], Transformation);
         }
     }
 
@@ -102,7 +101,7 @@ int main()
             column = 1;
             rotationCoefficient = mappingMatrix.GetRotationCoefficient(i, column);
         }
-        double p = Referee::Probability::Compute1DProbabilityDensityFunction(rotationCoefficient * mappingMatrix.GetChaslesTransformation(i, column).GetRotationAngle(), meansAndStdDevs[i].first, meansAndStdDevs[i].second);
+        double p = Referee::Probability::Compute1DProbabilityDensityFunction(rotationCoefficient * mappingMatrix.GetTransformation(i, column).GetRotationAngle(), meansAndStdDevs[i].first, meansAndStdDevs[i].second);
         std::cout << "Probability of rotation angle: " << p << std::endl;
     }
 
@@ -111,33 +110,18 @@ int main()
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     std::vector<double> initialRotationAngles = mappingMatrix.GetInitialRotationAngles();
-    std::cout << "Initial rotation angles: " << std::endl;
     for(int i = 0; i < initialRotationAngles.size(); i++)
     {
         std::cout << "Initial angle to be applied to point cloud " << i << ": " << initialRotationAngles[i] << std::endl;
     }
-    std::cout << "Corrected angles to be applied: " << std::endl;
-    std::vector<double> correctedAngles = Referee::Probability::Compute1DGradienDescent(meansAndStdDevs, initialRotationAngles, 0.00001, 10000, 0.000001);
 
+    std::vector<double> correctedAngles = Referee::Probability::Compute1DGradienDescent(meansAndStdDevs, initialRotationAngles, 0.00001, 10000, 0.000001);
     for(int i = 0; i < numberFiles; i++)
     {
         std::cout << "Corrected angle to be applied to point cloud " << i << ": " << correctedAngles[i] << std::endl;
     }
 
-    std::ofstream outputFile("rotationAnglesAndStandardDeviations.txt");
-    if (outputFile.is_open())
-    {
-        outputFile << "# PointcloudID, meanRotationAngle, stdDevRotationAngle, correctedRotationAngle" << std::endl;
-        for (int i = 0; i < numberFiles; i++)
-        {
-            outputFile << i << ", " << meansAndStdDevs[i].first << ", " << meansAndStdDevs[i].second << ", " << correctedAngles[i] << std::endl;
-        }
-        outputFile.close();
-    }
-    else
-    {
-        std::cerr << "Unable to open file" << std::endl;
-    }
+    Referee::Utils::IO::SaveRotationAnglesAndStdDevs("rotation_angles_and_std_devs.txt", meansAndStdDevs, correctedAngles);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                               TRANSLATION
@@ -149,7 +133,7 @@ int main()
         for(int j = 0; j < translationVectors.size(); j++)
         {
             Eigen::Vector3d translationVector = translationVectors[j];
-            Eigen::Vector3d rotationAxis = mappingMatrix.GetChaslesTransformation(i, j).GetRotationAxis();
+            Eigen::Vector3d rotationAxis = mappingMatrix.GetTransformation(i, j).GetRotationVector();
             Eigen::Matrix4d transformationMatrix = Eigen::Matrix4d::Identity();
             transformationMatrix.block<3, 3>(0, 0) = Eigen::AngleAxisd(correctedAngles[j], rotationAxis).toRotationMatrix();
             Eigen::Vector3d correctionPostRotation = Referee::Transformations::CalculateResultingTranslation(transformationMatrix, initialTranslationVectors[i] + translationVector - initialTranslationVectors[j]);
@@ -263,7 +247,7 @@ int main()
         // {
         //     transform.block<3, 1>(0, 3) = initialTranslationVectors[i];
         // }
-        transform.block<3, 1>(0, 3) = initialTranslationVectors[i] + finalTranslationVectorsPerPc[i];
+        transform.block<3, 1>(0, 3) = initialTranslationVectors[i] /*+ finalTranslationVectorsPerPc[i]*/;
         finalTransformations.push_back(transform);
         Referee::Transformations::TransformPointCloud<pcl::PointXYZRGB>(coloredPointCloud, transform);
 

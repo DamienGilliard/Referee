@@ -93,29 +93,44 @@ namespace Referee::Mapping
      * @brief Thic class stores a transformation in 3D in the form of a rotation axis, a point on this axis, a rotation along this axis, and a translation along this axis.
      * 
      */
-    class ChaslesTransformation
+    class Transformation
     {
         public:
-            ChaslesTransformation() = default;
-            ChaslesTransformation(Eigen::Vector3d rotationAxis, Eigen::Vector3d pointOnAxis, double rotationAngle, Eigen::Vector3d translation)
-                : __rotationAxis(rotationAxis), __pointOnAxis(pointOnAxis), __rotationAngle(rotationAngle), __translation(translation) {}
-            ChaslesTransformation(Eigen::Matrix4d transformationMatrix);
+            Transformation() = default;
+            Transformation(Eigen::Matrix4d transformationMatrixInGlobalCoordinateSystem);
+    // class ChaslesTransformation
+    // {
+        // public:
+            // ChaslesTransformation() = default;
+            // ChaslesTransformation(Eigen::Vector3d rotationAxis, Eigen::Vector3d pointOnAxis, double rotationAngle, Eigen::Vector3d translation)
+            //     : __rotationAxis(rotationAxis), __pointOnAxis(pointOnAxis), __rotationAngle(rotationAngle), __translation(translation) {}
+            // ChaslesTransformation(Eigen::Matrix4d transformationMatrix);
 
             /**
              * @brief Print the transformation to the console
              */
             void PrintTransformation();
 
-            Eigen::Vector3d GetRotationAxis() const { return __rotationAxis; }
-            Eigen::Vector3d GetPointOnAxis() const { return __pointOnAxis; }
-            double GetRotationAngle() const { return __rotationAngle; }
-            Eigen::Vector3d GetTranslation() const { return __translation; }
+            // Eigen::Vector3d GetRotationAxis() const { return __rotationAxis; }
+            // Eigen::Vector3d GetPointOnAxis() const { return __pointOnAxis; }
+            double GetRotationAngle() const 
+            { 
+                if (__globalRotationVector.z() < 0)
+                {
+                    return -__globalRotationVector.norm();
+                } 
+                else
+                {
+                    return __globalRotationVector.norm();
+                }
+            }
+            Eigen::Vector3d GetRotationVector() const { return __globalRotationVector; }
+            Eigen::Vector3d GetTranslation() const { return __globalTranslation; }
         
         private:
-            Eigen::Vector3d __rotationAxis; // rotation axis
-            Eigen::Vector3d __pointOnAxis; // point on the rotation axis
-            double __rotationAngle; // rotation angle in radians
-            Eigen::Vector3d __translation; // translation along the rotation axis
+            Eigen::Vector3d __globalRotationVector; // rotation axis expressed in the global coordinate system, the norm of this vector is the rotation angle in radians
+            Eigen::Vector3d __globalTranslation; // translation vector expressed in the global coordinate system
+            Eigen::Matrix4d __globalTransformation; // transformation matrix in the global coordinate system
     };
 
     
@@ -141,7 +156,7 @@ namespace Referee::Mapping
                 {
                     for(int j = 0; j < numPointClouds; j++)
                     {
-                        __mappingMatrix[i][j] = Referee::Mapping::ChaslesTransformation();
+                        __mappingMatrix[i][j] = Referee::Mapping::Transformation();
                     }
                 }
             }
@@ -160,9 +175,9 @@ namespace Referee::Mapping
              * @brief Getter of the transformation matrix between two point clouds
              * @param i Index of the first point cloud
              * @param j Index of the second point cloud
-             * @return Referee::Mapping::ChaslesTransformation between the two point clouds
+             * @return Referee::Mapping::Transformation between the two point clouds
              */
-            Referee::Mapping::ChaslesTransformation GetChaslesTransformation(int i, int j)
+            Referee::Mapping::Transformation GetTransformation(int i, int j)
             {
                 return __mappingMatrix[i][j];
             }
@@ -179,17 +194,17 @@ namespace Referee::Mapping
              * @param i Index of the point cloud
              * @return Mean rotation angle of the transformation matrices
              */
-            double GetMeanRotation(int i){return __meanChaslesTransformations[i].GetRotationAngle();}
+            double GetMeanRotation(int i){return __meanTransformations[i].GetRotationAngle();}
 
             /**
              * @brief Setter for the transformation matrix between two point clouds
              * @param i Index of the first point cloud
              * @param j Index of the second point cloud
-             * @param ChaslesTransformation Transformation matrix between the two point clouds
+             * @param transformation Transformation matrix between the two point clouds
              */
-            void SetChaslesTransformation(int i, int j, Referee::Mapping::ChaslesTransformation chaslesTransformation)
+            void SetTransformation(int i, int j, Referee::Mapping::Transformation transformation)
             {
-                __mappingMatrix[i][j] = chaslesTransformation;
+                __mappingMatrix[i][j] = transformation;
             }
 
             /**
@@ -202,9 +217,9 @@ namespace Referee::Mapping
              * @param i Index of the point cloud
              * @return Mean transformation matrix of the point cloud
              */
-            Referee::Mapping::ChaslesTransformation GetMeanChaslesTransformation(int i)
+            Referee::Mapping::Transformation GetMeanTransformation(int i)
             {
-                return __meanChaslesTransformations[i];
+                return __meanTransformations[i];
             }
 
             /**
@@ -244,12 +259,12 @@ namespace Referee::Mapping
             /**
              * @brief Mapping matrix between the point clouds, where each element is the transformation matrix between two point clouds
              */
-            std::vector<std::vector<Referee::Mapping::ChaslesTransformation>> __mappingMatrix;
+            std::vector<std::vector<Referee::Mapping::Transformation>> __mappingMatrix;
 
             /**
              * @brief Mean transformation matrix per point cloud
              */
-            std::vector<Referee::Mapping::ChaslesTransformation> __meanChaslesTransformations;
+            std::vector<Referee::Mapping::Transformation> __meanTransformations;
 
             /**
              * @brief The matrix of the rotation coefficients. The rotation coefficients are by how much we should multiply the rotation angle of the transformation to get a compatible rotation wioth neighboring point clouds

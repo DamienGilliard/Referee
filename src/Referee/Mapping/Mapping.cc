@@ -3,31 +3,38 @@
 
 namespace Referee::Mapping
 {
-    ChaslesTransformation::ChaslesTransformation(Eigen::Matrix4d transformationMatrix)
-    {
-        Eigen::Matrix3d rotationMatrix = transformationMatrix.block<3, 3>(0, 0);
-        Eigen::Vector3d translationVector = transformationMatrix.block<3, 1>(0, 3);
+    // ChaslesTransformation::ChaslesTransformation(Eigen::Matrix4d transformationMatrix)
+    // {
+    //     Eigen::Matrix3d rotationMatrix = transformationMatrix.block<3, 3>(0, 0);
+    //     Eigen::Vector3d translationVector = transformationMatrix.block<3, 1>(0, 3);
 
-        std::vector<Eigen::Vector3d> screwAxis = ComputeScrewAxis(transformationMatrix);
-        __rotationAxis = screwAxis[0];
-        __translation = screwAxis[1];
-        __pointOnAxis = screwAxis[2];
-        if(__rotationAxis.z() < 0)
-        {
-            __rotationAngle = -__rotationAxis.norm();
-        }
-        else
-        {
-            __rotationAngle = __rotationAxis.norm();
-        }        
+    //     std::vector<Eigen::Vector3d> screwAxis = ComputeScrewAxis(transformationMatrix);
+    //     __rotationAxis = screwAxis[0];
+    //     __translation = screwAxis[1];
+    //     __pointOnAxis = screwAxis[2];
+    //     if(__rotationAxis.z() < 0)
+    //     {
+    //         __rotationAngle = -__rotationAxis.norm();
+    //     }
+    //     else
+    //     {
+    //         __rotationAngle = __rotationAxis.norm();
+    //     }        
+    // }
+    Transformation::Transformation(Eigen::Matrix4d transformationMatrixInGlobalCoordinateSystem)
+        : __globalTransformation(transformationMatrixInGlobalCoordinateSystem)
+    {
+        Eigen::Matrix3d rotationMatrix = transformationMatrixInGlobalCoordinateSystem.block<3, 3>(0, 0);
+        Eigen::AngleAxisd angleAxis(rotationMatrix);
+        __globalRotationVector = angleAxis.axis() * angleAxis.angle();
+        __globalTranslation = transformationMatrixInGlobalCoordinateSystem.block<3, 1>(0, 3);
     }
 
-    void ChaslesTransformation::PrintTransformation()
+    void Transformation::PrintTransformation()
     {
-        std::cout << "Rotation axis: " << __rotationAxis.transpose() << std::endl;
-        std::cout << "Point on axis: " << __pointOnAxis.transpose() << std::endl;
-        std::cout << "Rotation angle: " << __rotationAngle << std::endl;
-        std::cout << "Translation: " << __translation.transpose() << std::endl;
+        std::cout << "Rotation vector: " << __globalRotationVector.transpose() << std::endl;
+        std::cout << "Rotation angle: " << __globalRotationVector.norm() << " radians" << std::endl;
+        std::cout << "Translation: " << __globalTranslation.transpose() << std::endl;
     }
 
     void MappingMatrix::PrintMatrix()
@@ -49,13 +56,12 @@ namespace Referee::Mapping
     {
         std::vector<double> stdDevRotations;
         this->__stdDevRotations.resize(__mappingMatrix.size());
-        this->__meanChaslesTransformations.resize(__mappingMatrix.size());
+        this->__meanTransformations.resize(__mappingMatrix.size());
         for(int i = 0; i < __mappingMatrix.size(); i++)
         {
             Eigen::Vector3d meanTranslation = Eigen::Vector3d::Zero();
             Eigen::Vector3d meanRotationAxis = Eigen::Vector3d::Zero();
-            Eigen::Vector3d meanRotationAnchor = Eigen::Vector3d::Zero();
-            double meanRotation = 0;
+            double meanRotationAngle = 0;
             double stdDevRotation = 0;
             int nonZeroMatrices = 0;
             for(int j = 0; j < __mappingMatrix[i].size(); j++)
@@ -66,20 +72,18 @@ namespace Referee::Mapping
                 }
 
                 meanTranslation += __mappingMatrix[i][j].GetTranslation();
-                Eigen::Vector3d rotationAxis = __mappingMatrix[i][j].GetRotationAxis();
+                Eigen::Vector3d rotationAxis = __mappingMatrix[i][j].GetRotationVector();
                 if(rotationAxis.z() < 0)
                 {
                     rotationAxis = -rotationAxis;
                 }
                 meanRotationAxis += rotationAxis;
-                meanRotation += __mappingMatrix[i][j].GetRotationAngle();
-                meanRotationAnchor += __mappingMatrix[i][j].GetPointOnAxis();
+                meanRotationAngle += __mappingMatrix[i][j].GetRotationAngle();
                 nonZeroMatrices++;
             }
             meanTranslation /= nonZeroMatrices;
             meanRotationAxis /= nonZeroMatrices;
-            meanRotation /= nonZeroMatrices;
-            meanRotationAnchor /= nonZeroMatrices;
+            meanRotationAngle /= nonZeroMatrices;
 
             for(int j = 0; j < __mappingMatrix[i].size(); j++)
             {
@@ -87,13 +91,18 @@ namespace Referee::Mapping
                 {
                     continue;
                 }
-                stdDevRotation += std::pow(__mappingMatrix[i][j].GetRotationAngle() - meanRotation, 2);
+                stdDevRotation += std::pow(__mappingMatrix[i][j].GetRotationAngle() - meanRotationAngle, 2);
             }
             stdDevRotation = sqrt(stdDevRotation / nonZeroMatrices);
             __stdDevRotations[i] = stdDevRotation;
 
-            Referee::Mapping::ChaslesTransformation meanChaslesTransformation(meanRotationAxis, meanRotationAnchor, meanRotation, meanTranslation);
-            this->__meanChaslesTransformations[i] = meanChaslesTransformation;
+            Eigen::Matrix4d meanTransformationMatrix = Eigen::Matrix4d::Identity();
+            Eigen::Matrix3d rotationMatrix = Eigen::AngleAxisd(meanRotationAngle, meanRotationAxis.normalized()).toRotationMatrix();
+            meanTransformationMatrix.block<3, 3>(0, 0) = rotationMatrix;
+            meanTransformationMatrix.block<3, 1>(0, 3) = meanTranslation;
+
+            Referee::Mapping::Transformation meanTransformation(meanTransformationMatrix);
+            this->__meanTransformations[i] = meanTransformation;
         }
     }
 
@@ -237,10 +246,10 @@ namespace Referee::Mapping
 
     void MappingMatrix::PrintMeanMatrices()
     {
-        for(int i = 0; i < this->__meanChaslesTransformations.size(); i++)
+        for(int i = 0; i < this->__meanTransformations.size(); i++)
         {
             std::cout << "Mean transformation matrix for point cloud " << i << std::endl;
-            this->__meanChaslesTransformations[i].PrintTransformation();
+            this->__meanTransformations[i].PrintTransformation();
             std::cout << std::endl;
         }
     }
