@@ -1,5 +1,6 @@
 #include "Mapping.hh"
 #include "../GeometricTransformations/GeometricTransformation.hh"
+#include "../Probability/Probability.hh"
 
 namespace Referee::Mapping
 {
@@ -106,8 +107,35 @@ namespace Referee::Mapping
         }
     }
 
-    void MappingMatrix::ComputeRotationCoefficients(double mostTrustworthyRotationAngle, int mostTrustworthyPointCloudIndex)
+    std::tuple<int, double> MappingMatrix::GetMostProbableRotation()
     {
+        int mostProbableIndex = 0;
+        double maxProbability = 0;
+        for(int i = 0; i < this->__stdDevRotations.size(); i++)
+        {
+            double probability = Referee::Probability::Compute1DProbabilityDensityFunction(this->__meanTransformations[i].GetRotationAngle(), this->__meanTransformations[i].GetRotationAngle(), this->__stdDevRotations[i]);
+            if(probability > maxProbability)
+            {
+                maxProbability = probability;
+                mostProbableIndex = i;
+            }
+        }
+        return std::make_tuple(mostProbableIndex, maxProbability);
+    }
+
+    std::vector<std::pair<double, double>> MappingMatrix::GetMeanRotationsAndStdDevs()
+    {
+        std::vector<std::pair<double, double>> meanRotationsAndStdDevs;
+        for(int i = 0; i < this->__meanTransformations.size(); i++)
+        {
+            meanRotationsAndStdDevs.push_back(std::make_pair(this->__meanTransformations[i].GetRotationAngle(), this->__stdDevRotations[i]));
+        }
+        return meanRotationsAndStdDevs;
+    }
+
+    void MappingMatrix::ComputeRotationCoefficients(int mostTrustworthyPointCloudIndex)
+    {
+        double mostTrustworthyRotationAngle = this->__meanTransformations[mostTrustworthyPointCloudIndex].GetRotationAngle();
         int numberFiles = this->__mappingMatrix.size();
         Eigen::MatrixXd rotationCoefficients(numberFiles, numberFiles);
         for(int i = 0; i < numberFiles; i++)

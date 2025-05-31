@@ -73,39 +73,11 @@ int main()
     mappingMatrix.CalculateMeanTransformationMatrices();
     mappingMatrix.PrintMeanMatrices();
 
-    std::vector<std::tuple<int, double, double>> IDMeansAndStdDevs;
-    for(int i = 0; i < numberFiles; i++)
-    {
-        IDMeansAndStdDevs.push_back(std::make_tuple(i, mappingMatrix.GetMeanRotation(i), mappingMatrix.GetStdDevRotation(i)));
-    }
-
-    std::sort(IDMeansAndStdDevs.begin(), IDMeansAndStdDevs.end(), [](const std::tuple<int, double, double>& a, const std::tuple<int, double, double>& b) {
-        return std::get<2>(a) < std::get<2>(b);
-    });
-
-    mappingMatrix.ComputeRotationCoefficients(std::get<1>(IDMeansAndStdDevs[0]), std::get<0>(IDMeansAndStdDevs[0]));
-    std::vector<std::pair<double, double>> meansAndStdDevs(IDMeansAndStdDevs.size());
-    for(int i = 0; i < IDMeansAndStdDevs.size(); i++)
-    {
-        meansAndStdDevs[std::get<0>(IDMeansAndStdDevs[i])].first = std::get<1>(IDMeansAndStdDevs[i]);
-        meansAndStdDevs[std::get<0>(IDMeansAndStdDevs[i])].second = std::get<2>(IDMeansAndStdDevs[i]);
-    }
-    std::cout << "Probabilities of rotation angles: " << std::endl;
-    for(int i = 0; i < numberFiles; i++)
-    {
-        std::cout << "For Point cloud " << i << std::endl;
-        int column = 0;
-        double rotationCoefficient = mappingMatrix.GetRotationCoefficient(i, column);
-        if(rotationCoefficient == 0)
-        {
-            column = 1;
-            rotationCoefficient = mappingMatrix.GetRotationCoefficient(i, column);
-        }
-        double p = Referee::Probability::Compute1DProbabilityDensityFunction(rotationCoefficient * mappingMatrix.GetTransformation(i, column).GetRotationAngle(), meansAndStdDevs[i].first, meansAndStdDevs[i].second);
-        std::cout << "Probability of rotation angle: " << p << std::endl;
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    std::tuple<int, double> mostProbableRotation = mappingMatrix.GetMostProbableRotation();
+    int mostProbableIndexRotation = std::get<0>(mostProbableRotation);
+    mappingMatrix.ComputeRotationCoefficients(mostProbableIndexRotation);
+    std::vector<std::pair<double, double>> meansAndStdDevs = mappingMatrix.GetMeanRotationsAndStdDevs();
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////    
     //                                                 ROTATIONS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

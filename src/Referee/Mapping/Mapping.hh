@@ -217,17 +217,26 @@ namespace Referee::Mapping
              * @param i Index of the point cloud
              * @return Mean transformation matrix of the point cloud
              */
-            Referee::Mapping::Transformation GetMeanTransformation(int i)
-            {
-                return __meanTransformations[i];
-            }
+            Referee::Mapping::Transformation GetMeanTransformation(int i){return __meanTransformations[i];}
+
+            /**
+             * @brief Computes the most probable mean rotation angle throughout the point clouds
+             * @return A tuple containing the index of the point cloud with the most probable rotation angle and the probability of this rotation angle
+             */
+            std::tuple<int, double> GetMostProbableRotation();
+
+            /**
+             * @brief for each point cloud, get the mean rotations and standard deviations of the rotation angles of the transformation matrices
+             * @return A vector of pairs, where each pair contains the mean rotation angle and the standard deviation of the rotation angle for each point cloud
+             */
+            std::vector<std::pair<double, double>> GetMeanRotationsAndStdDevs();
 
             /**
              * @brief Compute the rotation coefficients between the point clouds
              * @param mostTrustworthyRotationAngle The rotation angle of the most trustworthy point cloud
              * @param mostTrustworthyPointCloudIndex The index of the most trustworthy point cloud
              */
-            void ComputeRotationCoefficients(double mostTrustworthyRotationAngle, int mostTrustworthyPointCloudIndex);
+            void ComputeRotationCoefficients(int mostTrustworthyPointCloudIndex);
 
             /**
              * @brief Getter for the rotation coefficient
@@ -271,6 +280,10 @@ namespace Referee::Mapping
              */
             Eigen::MatrixXd __rotationCoefficients;
 
+            /**
+             * @brief mean of the rotation angles of the transformation matrices
+             */
+            std::vector<double> __meanRotations;
             /**
              * @brief standard deviation of the rotation angles of the transformation matrices
              */
