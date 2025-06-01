@@ -4,6 +4,29 @@
 
 namespace Referee::Probability
 {
+    std::pair<Eigen::Vector3d, Eigen::Matrix3d> ComputeMeanVectorAndCovarianceMatrix(const std::vector<Eigen::Vector3d>& points, const Eigen::Vector3d& mean)
+    {
+        Eigen::Vector3d meanVector = Eigen::Vector3d::Zero();
+        Eigen::Matrix3d covarianceMatrix = Eigen::Matrix3d::Zero();
+
+        // Compute the mean vector
+        for (const auto& point : points)
+        {
+            meanVector += point;
+        }
+        meanVector /= static_cast<double>(points.size());
+
+        // Compute the covariance matrix
+        for (const auto& point : points)
+        {
+            Eigen::Vector3d diff = point - meanVector;
+            covarianceMatrix += diff * diff.transpose();
+        }
+        covarianceMatrix /= static_cast<double>(points.size());
+
+        return std::make_pair(meanVector, covarianceMatrix);
+    }
+    
     double Compute1DProbabilityDensityFunction(double x, double mean, double stdDev)
     {
         double exponent = -0.5 * std::pow((x - mean) / stdDev, 2);

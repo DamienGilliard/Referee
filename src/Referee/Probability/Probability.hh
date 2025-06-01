@@ -4,6 +4,13 @@
 namespace Referee::Probability
 {
     /**
+     * @brief Computes the mean vector and covariance matrix of a set of 3D vectors
+     * @param vectors a vector of 3D vectors
+     * @return a pair containing the mean vector and the covariance matrix
+     */
+    std::pair<Eigen::Vector3d, Eigen::Matrix3d> ComputeMeanVectorAndCovarianceMatrix(const std::vector<Eigen::Vector3d>& vectors);
+
+    /**
      * @brief Computes the probability of a value x given a normal distribution with mean and standard deviation
      * @param x the value to compute the probability for
      * @param mean the mean of the normal distribution
