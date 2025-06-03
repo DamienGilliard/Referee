@@ -4,24 +4,6 @@
 
 namespace Referee::Mapping
 {
-    // ChaslesTransformation::ChaslesTransformation(Eigen::Matrix4d transformationMatrix)
-    // {
-    //     Eigen::Matrix3d rotationMatrix = transformationMatrix.block<3, 3>(0, 0);
-    //     Eigen::Vector3d translationVector = transformationMatrix.block<3, 1>(0, 3);
-
-    //     std::vector<Eigen::Vector3d> screwAxis = ComputeScrewAxis(transformationMatrix);
-    //     __rotationAxis = screwAxis[0];
-    //     __translation = screwAxis[1];
-    //     __pointOnAxis = screwAxis[2];
-    //     if(__rotationAxis.z() < 0)
-    //     {
-    //         __rotationAngle = -__rotationAxis.norm();
-    //     }
-    //     else
-    //     {
-    //         __rotationAngle = __rotationAxis.norm();
-    //     }        
-    // }
     Transformation::Transformation(Eigen::Matrix4d transformationMatrixInGlobalCoordinateSystem)
         : __globalTransformation(transformationMatrixInGlobalCoordinateSystem)
     {
@@ -55,12 +37,17 @@ namespace Referee::Mapping
 
     void MappingMatrix::CalculateMeanTransformationMatrices()
     {
-        std::vector<double> stdDevRotations;
+        // std::vector<double> stdDevRotations;
         this->__stdDevRotations.resize(__mappingMatrix.size());
         this->__meanTransformations.resize(__mappingMatrix.size());
+        this->__meanTranslationVectors.resize(__mappingMatrix.size());
+        this->__covTranslationVectors.resize(__mappingMatrix.size());
         for(int i = 0; i < __mappingMatrix.size(); i++)
         {
+            std::vector<Eigen::Vector3d> translationVectors;
+            Eigen::Matrix3d translationCovarianceMatrix = Eigen::Matrix3d::Zero();
             Eigen::Vector3d meanTranslation = Eigen::Vector3d::Zero();
+            Eigen::Vector3d stdDevTranslation = Eigen::Vector3d::Zero();
             Eigen::Vector3d meanRotationAxis = Eigen::Vector3d::Zero();
             double meanRotationAngle = 0;
             double stdDevRotation = 0;
@@ -72,7 +59,7 @@ namespace Referee::Mapping
                     continue;
                 }
 
-                meanTranslation += __mappingMatrix[i][j].GetTranslation();
+                translationVectors.push_back(__mappingMatrix[i][j].GetTranslation());
                 Eigen::Vector3d rotationAxis = __mappingMatrix[i][j].GetRotationVector();
                 if(rotationAxis.z() < 0)
                 {
@@ -82,9 +69,10 @@ namespace Referee::Mapping
                 meanRotationAngle += __mappingMatrix[i][j].GetRotationAngle();
                 nonZeroMatrices++;
             }
-            meanTranslation /= nonZeroMatrices;
+            std::pair<Eigen::Vector3d, Eigen::Matrix3d> translationStats = Referee::Probability::ComputeMeanVectorAndCovarianceMatrix(translationVectors);
             meanRotationAxis /= nonZeroMatrices;
             meanRotationAngle /= nonZeroMatrices;
+            this->__meanTranslationVectors[i] = translationStats.first;
 
             for(int j = 0; j < __mappingMatrix[i].size(); j++)
             {
@@ -94,16 +82,20 @@ namespace Referee::Mapping
                 }
                 stdDevRotation += std::pow(__mappingMatrix[i][j].GetRotationAngle() - meanRotationAngle, 2);
             }
-            stdDevRotation = sqrt(stdDevRotation / nonZeroMatrices);
             __stdDevRotations[i] = stdDevRotation;
+            std::cout << "[DEBUG] covariance matrix:" << translationStats.second << std::endl;
 
+            std::cout << "[DEBUG] determinant of covariance matrix: " << translationStats.second.determinant() << std::endl;
+            double entropy = 3.0/2.0 * (1.0 + std::log(2.0 * M_PI)) + 0.5 * std::log(translationStats.second.determinant());
+            std::cout << "[DEBUG]Entropy for point cloud " << i << ": " << entropy << std::endl;
             Eigen::Matrix4d meanTransformationMatrix = Eigen::Matrix4d::Identity();
             Eigen::Matrix3d rotationMatrix = Eigen::AngleAxisd(meanRotationAngle, meanRotationAxis.normalized()).toRotationMatrix();
             meanTransformationMatrix.block<3, 3>(0, 0) = rotationMatrix;
-            meanTransformationMatrix.block<3, 1>(0, 3) = meanTranslation;
+            meanTransformationMatrix.block<3, 1>(0, 3) = translationStats.first;
 
             Referee::Mapping::Transformation meanTransformation(meanTransformationMatrix);
             this->__meanTransformations[i] = meanTransformation;
+            this->__covTranslationVectors[i] = translationStats.second;
         }
     }
 
@@ -305,18 +297,18 @@ namespace Referee::Mapping
         {
             if(i == mostTrustworthyPointCloudIndex)
             {
-                this->__translationFactorsWithRests[i][mostTrustworthyPointCloudIndex].first = 1.0;
-                this->__translationFactorsWithRests[i][mostTrustworthyPointCloudIndex].second = Eigen::Vector3d::Zero();
+                this->__translationFactorsWithRests[i][i].first = 1.0;
+                this->__translationFactorsWithRests[i][i].second = this->__meanTranslationVectors[i];
                 continue;
             }
-            Eigen::Vector3d translationVector = this->__mappingMatrix[i][mostTrustworthyPointCloudIndex].GetTranslation();
+            Eigen::Vector3d translationVector = this->__mappingMatrix[mostTrustworthyPointCloudIndex][i].GetTranslation();
             double projectionFactor = mostTrustworthyTranslationVector.dot(translationVector.normalized()) / translationVector.norm();
             Eigen::Vector3d projectionOfMeanVectorOnIndividualTranslationVector = projectionFactor * translationVector;
             Eigen::Vector3d rest = mostTrustworthyTranslationVector - projectionOfMeanVectorOnIndividualTranslationVector;
-            this->__translationFactorsWithRests[i][mostTrustworthyPointCloudIndex].first = projectionFactor;
-            this->__translationFactorsWithRests[i][mostTrustworthyPointCloudIndex].second = rest;
-            this->__translationFactorsWithRests[mostTrustworthyPointCloudIndex][i].first = 1.0 - projectionFactor;
+            this->__translationFactorsWithRests[mostTrustworthyPointCloudIndex][i].first = projectionFactor;
             this->__translationFactorsWithRests[mostTrustworthyPointCloudIndex][i].second = rest;
+            this->__translationFactorsWithRests[i][mostTrustworthyPointCloudIndex].first = 1.0 - projectionFactor;
+            this->__translationFactorsWithRests[i][mostTrustworthyPointCloudIndex].second = rest;
             std::cout << "[DEBUG]Projection factor for point cloud " << i << ": " << projectionFactor << std::endl;
 
         }
