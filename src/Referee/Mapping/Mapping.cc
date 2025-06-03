@@ -123,6 +123,34 @@ namespace Referee::Mapping
         return std::make_tuple(mostProbableIndex, maxProbability);
     }
 
+    std::pair<int, double> MappingMatrix::GetMostProbableTranslation()
+    {
+        int mostProbableIndex = 0;
+        double maxProbability = 0;
+        for(int i = 0; i < this->__mappingMatrix.size(); i++)
+        {
+            std::vector<Eigen::Vector3d> translationVectors;
+            for(int j = 0; j < this->__mappingMatrix[i].size(); j++)
+            {
+                if(this->__mappingMatrix[i][j].GetTranslation().norm() == 0)
+                {
+                    continue;
+                }
+                translationVectors.push_back(this->__mappingMatrix[i][j].GetTranslation());
+            }
+
+            double probability = Referee::Probability::Compute3DProbabilityDensityFunction(this->__meanTranslationVectors[i], this->__meanTranslationVectors[i], this->__covTranslationVectors[i]);
+            std::cout << "[DEBUG]Probability for point cloud " << i << ": " << probability << std::endl;
+            std::cout << "[DEBUG]Mean translation vector for point cloud " << i << ": " << this->__meanTranslationVectors[i].transpose() << std::endl;
+            if(probability > maxProbability)
+            {
+                maxProbability = probability;
+                mostProbableIndex = i;
+            }
+        }
+        return std::make_pair(mostProbableIndex, maxProbability);
+    }
+
     std::vector<std::pair<double, double>> MappingMatrix::GetMeanRotationsAndStdDevs()
     {
         std::vector<std::pair<double, double>> meanRotationsAndStdDevs;
@@ -133,6 +161,17 @@ namespace Referee::Mapping
         return meanRotationsAndStdDevs;
     }
 
+    std::vector<std::pair<double, Eigen::Vector3d>> MappingMatrix::GetMeanTranslationVectorsAndStdDevs()
+    {
+        std::vector<std::pair<double, Eigen::Vector3d>> meanTranslationVectorsAndStdDevs;
+        for(int i = 0; i < this->__meanTransformations.size(); i++)
+        {
+            Eigen::Vector3d translation = this->__meanTransformations[i].GetTranslation();
+            double stdDev = this->__stdDevRotations[i]; // Assuming stdDev is the same for all components of the translation vector
+            meanTranslationVectorsAndStdDevs.push_back(std::make_pair(translation.norm(), translation));
+        }
+        return meanTranslationVectorsAndStdDevs;
+    }
     void MappingMatrix::ComputeRotationCoefficients(int mostTrustworthyPointCloudIndex)
     {
         double mostTrustworthyRotationAngle = this->__meanTransformations[mostTrustworthyPointCloudIndex].GetRotationAngle();

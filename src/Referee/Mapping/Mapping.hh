@@ -197,6 +197,13 @@ namespace Referee::Mapping
             double GetMeanRotation(int i){return __meanTransformations[i].GetRotationAngle();}
 
             /**
+             * @brief Getter for the mean translation vector of the transformation matrices
+             * @param i Index of the point cloud
+             * @return Mean translation vector of the transformation matrices
+             */
+            Eigen::Vector3d GetMeanTranslationVector(int i){return __meanTranslationVectors[i];}
+
+            /**
              * @brief Setter for the transformation matrix between two point clouds
              * @param i Index of the first point cloud
              * @param j Index of the second point cloud
@@ -226,10 +233,22 @@ namespace Referee::Mapping
             std::tuple<int, double> GetMostProbableRotation();
 
             /**
+             * @brief Computes the most probable translation vector throughout the point clouds
+             * @return A pair containing the index of the point cloud with the most probable translation vector and the probability of this translation vector
+             */
+            std::pair<int, double> GetMostProbableTranslation();
+
+            /**
              * @brief for each point cloud, get the mean rotations and standard deviations of the rotation angles of the transformation matrices
              * @return A vector of pairs, where each pair contains the mean rotation angle and the standard deviation of the rotation angle for each point cloud
              */
             std::vector<std::pair<double, double>> GetMeanRotationsAndStdDevs();
+
+            /**
+             * @brief Compute the mean translation vectors for each point cloud
+             * @return A vector of pairs, where each pair contains the mean translation vector and its standard deviation for each point cloud
+             */
+            std::vector<std::pair<double, Eigen::Vector3d>> GetMeanTranslationVectorsAndStdDevs();
 
             /**
              * @brief Compute the rotation coefficients between the point clouds
