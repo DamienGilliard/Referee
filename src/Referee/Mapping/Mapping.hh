@@ -258,6 +258,12 @@ namespace Referee::Mapping
             void ComputeRotationCoefficients(int mostTrustworthyPointCloudIndex);
 
             /**
+             * @brief Compute the translation coefficients between the point clouds
+             * @param mostTrustworthyPointCloudIndex The index of the most trustworthy point cloud
+             */
+            void ComputeTranslationCoefficients(int mostTrustworthyPointCloudIndex);
+
+            /**
              * @brief Getter for the rotation coefficient
              * @param i Index of the first point cloud (index of the row)
              * @param j Index of the second point cloud (index of the column)

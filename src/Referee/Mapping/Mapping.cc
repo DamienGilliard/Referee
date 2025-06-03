@@ -172,6 +172,7 @@ namespace Referee::Mapping
         }
         return meanTranslationVectorsAndStdDevs;
     }
+    
     void MappingMatrix::ComputeRotationCoefficients(int mostTrustworthyPointCloudIndex)
     {
         double mostTrustworthyRotationAngle = this->__meanTransformations[mostTrustworthyPointCloudIndex].GetRotationAngle();
@@ -291,6 +292,34 @@ namespace Referee::Mapping
             std::cout << std::endl;
         }
         std::cout << std::endl;
+    }
+
+    void MappingMatrix::ComputeTranslationCoefficients(int mostTrustworthyPointCloudIndex)
+    {
+        // Initialize the translation factors with rests
+        int numberFiles = this->__mappingMatrix.size();
+        this->__translationFactorsWithRests.resize(numberFiles, std::vector<std::pair<double, Eigen::Vector3d>>(numberFiles, std::make_pair(0.0, Eigen::Vector3d::Zero())));
+
+        Eigen::Vector3d mostTrustworthyTranslationVector = this->__meanTranslationVectors[mostTrustworthyPointCloudIndex];
+        for(int i = 0; i < numberFiles; i++)
+        {
+            if(i == mostTrustworthyPointCloudIndex)
+            {
+                this->__translationFactorsWithRests[i][mostTrustworthyPointCloudIndex].first = 1.0;
+                this->__translationFactorsWithRests[i][mostTrustworthyPointCloudIndex].second = Eigen::Vector3d::Zero();
+                continue;
+            }
+            Eigen::Vector3d translationVector = this->__mappingMatrix[i][mostTrustworthyPointCloudIndex].GetTranslation();
+            double projectionFactor = mostTrustworthyTranslationVector.dot(translationVector.normalized()) / translationVector.norm();
+            Eigen::Vector3d projectionOfMeanVectorOnIndividualTranslationVector = projectionFactor * translationVector;
+            Eigen::Vector3d rest = mostTrustworthyTranslationVector - projectionOfMeanVectorOnIndividualTranslationVector;
+            this->__translationFactorsWithRests[i][mostTrustworthyPointCloudIndex].first = projectionFactor;
+            this->__translationFactorsWithRests[i][mostTrustworthyPointCloudIndex].second = rest;
+            this->__translationFactorsWithRests[mostTrustworthyPointCloudIndex][i].first = 1.0 - projectionFactor;
+            this->__translationFactorsWithRests[mostTrustworthyPointCloudIndex][i].second = rest;
+            std::cout << "[DEBUG]Projection factor for point cloud " << i << ": " << projectionFactor << std::endl;
+
+        }
     }
 
     std::vector<double> MappingMatrix::GetInitialRotationAngles()
