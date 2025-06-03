@@ -270,7 +270,7 @@ namespace Referee::Mapping
 
             /**
              * @brief Getter for the rotation angles from the rotation coefficients 
-             * @return Rotation angles
+             * @return A vector of the initial rotation angles
              */
             std::vector<double> GetInitialRotationAngles();
             /**
@@ -303,10 +303,21 @@ namespace Referee::Mapping
              * @brief mean of the rotation angles of the transformation matrices
              */
             std::vector<double> __meanRotations;
+
+            /**
+             * @brief mean translation vectors for each point cloud
+             */
+            std::vector<Eigen::Vector3d> __meanTranslationVectors;
+
             /**
              * @brief standard deviation of the rotation angles of the transformation matrices
              */
             std::vector<double> __stdDevRotations;
+
+            /**
+             * @brief standard deviation of the translation vectors of the transformation matrices
+             */
+            std::vector<Eigen::Matrix3d> __covTranslationVectors;
 
             /**
              * @brief for each point cloud, the indices of the other point clouds with which transformations were computed
