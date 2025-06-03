@@ -274,6 +274,11 @@ namespace Referee::Mapping
                 return __rotationCoefficients(i, j);
             }
 
+
+            std::pair<double, Eigen::Vector3d> GetTranslationFactorWithRest(int i, int j)
+            {
+                return __translationFactorsWithRests[i][j];
+            }
             /**
              * @brief Getter for the rotation angles from the rotation coefficients 
              * @return A vector of the initial rotation angles
@@ -304,6 +309,11 @@ namespace Referee::Mapping
              * @brief The matrix of the rotation coefficients. The rotation coefficients are by how much we should multiply the rotation angle of the transformation to get a compatible rotation wioth neighboring point clouds
              */
             Eigen::MatrixXd __rotationCoefficients;
+
+            /**
+             * @brief translation to be applied to the point cloud
+             */
+            std::vector<std::vector<std::pair<double, Eigen::Vector3d>>> __translationFactorsWithRests;
 
             /**
              * @brief mean of the rotation angles of the transformation matrices
