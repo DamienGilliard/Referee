@@ -28,7 +28,7 @@ int main()
     pcl::PointCloud<pcl::PointXYZ>::Ptr targetPointCloud(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredFinalPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
-    std::vector<std::vector<Eigen::Vector3d>> translationVectorsPerPC(numberFiles, std::vector<Eigen::Vector3d>(numberFiles));
+    // std::vector<std::vector<Eigen::Vector3d>> translationVectorsPerPC(numberFiles, std::vector<Eigen::Vector3d>(numberFiles));
 
     // Calculate the different relative transformations
     for (int i = 0; i < matrix.size(); i++)
@@ -63,7 +63,7 @@ int main()
             Eigen::Matrix4d transformationMatrix = Referee::Mapping::ComputePairwiseTransformation(temporarySourcePointCloud, temporaryTargetPointCloud, Referee::Mapping::TransformationComputationMethod::GlobalMatch);
             std::cout << "Transformation matrix: " << transformationMatrix << std::endl;
             Eigen::Vector3d translation = Referee::Transformations::CalculateResultingTranslation(transformationMatrix, initialTranslationVectors[i]);
-            translationVectorsPerPC[i][matrix[i][j]] = translation;
+            // translationVectorsPerPC[i][matrix[i][j]] = translation;
             Referee::Mapping::Transformation Transformation(transformationMatrix);
             mappingMatrix.SetTransformation(i, matrix[i][j], Transformation);
         }
@@ -77,6 +77,7 @@ int main()
     int mostProbableIndexRotation = std::get<0>(mostProbableRotation);
     mappingMatrix.ComputeRotationCoefficients(mostProbableIndexRotation);
     std::vector<std::pair<double, double>> meansAndStdDevs = mappingMatrix.GetMeanRotationsAndStdDevs();
+    
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////    
     //                                                 ROTATIONS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -98,98 +99,101 @@ int main()
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                               TRANSLATION
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    std::vector<std::pair<Eigen::Vector3d, double>> translationVectorsWithProbability;
-    for(int i = 0; i < numberFiles; i++)
-    {
-        std::vector<Eigen::Vector3d> translationVectors= translationVectorsPerPC[i];
-        for(int j = 0; j < translationVectors.size(); j++)
-        {
-            Eigen::Vector3d translationVector = translationVectors[j];
-            Eigen::Vector3d rotationAxis = mappingMatrix.GetTransformation(i, j).GetRotationVector();
-            Eigen::Matrix4d transformationMatrix = Eigen::Matrix4d::Identity();
-            transformationMatrix.block<3, 3>(0, 0) = Eigen::AngleAxisd(correctedAngles[j], rotationAxis).toRotationMatrix();
-            Eigen::Vector3d correctionPostRotation = Referee::Transformations::CalculateResultingTranslation(transformationMatrix, initialTranslationVectors[i] + translationVector - initialTranslationVectors[j]);
-            translationVectors[j] = translationVector + correctionPostRotation;
-        }
-        Eigen::Vector3d meanTranslationVector = Eigen::Vector3d::Zero();
-        for(int j = 0; j < translationVectors.size(); j++)
-        {
-            meanTranslationVector += translationVectors[j];
-        }
-        meanTranslationVector /= static_cast<double>(translationVectors.size());
+    // std::vector<std::pair<Eigen::Vector3d, double>> translationVectorsWithProbability;
+    // for(int i = 0; i < numberFiles; i++)
+    // {
+    //     std::vector<Eigen::Vector3d> translationVectors= translationVectorsPerPC[i];
+    //     for(int j = 0; j < translationVectors.size(); j++)
+    //     {
+    //         Eigen::Vector3d translationVector = translationVectors[j];
+    //         Eigen::Vector3d rotationAxis = mappingMatrix.GetTransformation(i, j).GetRotationVector();
+    //         Eigen::Matrix4d transformationMatrix = Eigen::Matrix4d::Identity();
+    //         transformationMatrix.block<3, 3>(0, 0) = Eigen::AngleAxisd(correctedAngles[j], rotationAxis).toRotationMatrix();
+    //         Eigen::Vector3d correctionPostRotation = Referee::Transformations::CalculateResultingTranslation(transformationMatrix, initialTranslationVectors[i] + translationVector - initialTranslationVectors[j]);
+    //         translationVectors[j] = translationVector + correctionPostRotation;
+    //     }
+    //     Eigen::Vector3d meanTranslationVector = Eigen::Vector3d::Zero();
+    //     for(int j = 0; j < translationVectors.size(); j++)
+    //     {
+    //         meanTranslationVector += translationVectors[j];
+    //     }
+    //     meanTranslationVector /= static_cast<double>(translationVectors.size());
 
-        Eigen::Matrix3d covarianceMatrix = Eigen::Matrix3d::Zero();
-        for(int j = 0; j < translationVectors.size(); j++)
-        {
-            Eigen::Vector3d translationVector = translationVectors[j];
-            covarianceMatrix += (translationVector - meanTranslationVector) * (translationVector - meanTranslationVector).transpose();
-        }
-        covarianceMatrix /= static_cast<double>(translationVectors.size());
-        double probability = Referee::Probability::Compute3DProbabilityDensityFunction(meanTranslationVector, meanTranslationVector, covarianceMatrix);
-        translationVectorsWithProbability.push_back(std::make_pair(meanTranslationVector, probability));
-    }
+    //     Eigen::Matrix3d covarianceMatrix = Eigen::Matrix3d::Zero();
+    //     for(int j = 0; j < translationVectors.size(); j++)
+    //     {
+    //         Eigen::Vector3d translationVector = translationVectors[j];
+    //         covarianceMatrix += (translationVector - meanTranslationVector) * (translationVector - meanTranslationVector).transpose();
+    //     }
+    //     covarianceMatrix /= static_cast<double>(translationVectors.size());
+    //     double probability = Referee::Probability::Compute3DProbabilityDensityFunction(meanTranslationVector, meanTranslationVector, covarianceMatrix);
+    //     translationVectorsWithProbability.push_back(std::make_pair(meanTranslationVector, probability));
+    // }
 
-    int mostProbableIndex = 0;
-    double maxProbability = 0;
-    for(int i = 0; i < translationVectorsWithProbability.size(); i++)
-    {
-        if (i == mostProbableIndex)
-        {
-            continue;
-        }
-        if(translationVectorsWithProbability[i].second > maxProbability)
-        {
-            maxProbability = translationVectorsWithProbability[i].second;
-            mostProbableIndex = i;
-        }
-    }
+    // int mostProbableIndex = 0;
+    // double maxProbability = 0;
+    // for(int i = 0; i < translationVectorsWithProbability.size(); i++)
+    // {
+    //     if (i == mostProbableIndex)
+    //     {
+    //         continue;
+    //     }
+    //     if(translationVectorsWithProbability[i].second > maxProbability)
+    //     {
+    //         maxProbability = translationVectorsWithProbability[i].second;
+    //         mostProbableIndex = i;
+    //     }
+    // }
 
-    std::cout << "Most probable translation vector: " << translationVectorsWithProbability[mostProbableIndex].first.transpose() << std::endl;
-    std::cout << "Most probable index: " << mostProbableIndex << " With probability: " << maxProbability << std::endl;
 
+    // std::cout << "Most probable translation vector: " << translationVectorsWithProbability[mostProbableIndex].first.transpose() << std::endl;
+    // std::cout << "Most probable index: " << mostProbableIndex << " With probability: " << maxProbability << std::endl;
+
+    std::pair<int, double> mostProbableTranslation = mappingMatrix.GetMostProbableTranslation();
+    int mostProbableIndex = mostProbableTranslation.first;
+    mappingMatrix.ComputeTranslationCoefficients(mostProbableIndex);
     std::vector<std::vector<std::pair<double, Eigen::Vector3d>>> translationFactorsWithRest(numberFiles, std::vector<std::pair<double, Eigen::Vector3d>>(numberFiles, std::make_pair(0.0, Eigen::Vector3d::Zero())));
-    Eigen::Vector3d meanTranslationVector = translationVectorsWithProbability[mostProbableIndex].first;
-    for (int j = 0; j < translationVectorsPerPC[mostProbableIndex].size(); j++)
-    {
-        if(mostProbableIndex == j)
-        {
-            translationVectorsPerPC[j][mostProbableIndex] = meanTranslationVector;
-            translationFactorsWithRest[j][mostProbableIndex].first = 1.0;
-            translationFactorsWithRest[j][mostProbableIndex].second = Eigen::Vector3d::Zero();
-            continue;
-        }
-        std::cout << "Translation of pc " << mostProbableIndex << " With other pc: " << j << ": " << translationVectorsPerPC[mostProbableIndex][j].transpose() << std::endl;
-        std::cout << "Mean translation vector: " << meanTranslationVector.transpose() << std::endl;
-        Eigen::Vector3d normalizedTranslationVector = translationVectorsPerPC[mostProbableIndex][j].normalized();
-        std::cout << "Normalized translation vector: " << normalizedTranslationVector.transpose() << std::endl;
-        double projectionFactor = meanTranslationVector.dot(normalizedTranslationVector) / translationVectorsPerPC[mostProbableIndex][j].norm();
-        std::cout << "Projection factor: " << projectionFactor << std::endl;
-        Eigen::Vector3d projectionOfMeanVectorOnIndividualTranslationVector = projectionFactor * translationVectorsPerPC[mostProbableIndex][j];
-        std::cout << "Projection of mean vector on individual translation vector: " << projectionOfMeanVectorOnIndividualTranslationVector.transpose() << std::endl;
-        Eigen::Vector3d rest = meanTranslationVector - projectionOfMeanVectorOnIndividualTranslationVector;
-        std::cout << "Rest: " << rest.transpose() << std::endl;
+    Eigen::Vector3d meanTranslationVector = mappingMatrix.GetMeanTranslationVector(mostProbableIndex);
+    // for (int j = 0; j < translationVectorsPerPC[mostProbableIndex].size(); j++)
+    // {
+    //     if(mostProbableIndex == j)
+    //     {
+    //         translationVectorsPerPC[j][mostProbableIndex] = meanTranslationVector;
+    //         translationFactorsWithRest[j][mostProbableIndex].first = 1.0;
+    //         translationFactorsWithRest[j][mostProbableIndex].second = Eigen::Vector3d::Zero();
+    //         continue;
+    //     }
+    //     std::cout << "Translation of pc " << mostProbableIndex << " With other pc: " << j << ": " << translationVectorsPerPC[mostProbableIndex][j].transpose() << std::endl;
+    //     std::cout << "Mean translation vector: " << meanTranslationVector.transpose() << std::endl;
+    //     Eigen::Vector3d normalizedTranslationVector = translationVectorsPerPC[mostProbableIndex][j].normalized();
+    //     std::cout << "Normalized translation vector: " << normalizedTranslationVector.transpose() << std::endl;
+    //     double projectionFactor = meanTranslationVector.dot(normalizedTranslationVector) / translationVectorsPerPC[mostProbableIndex][j].norm();
+    //     std::cout << "Projection factor: " << projectionFactor << std::endl;
+    //     Eigen::Vector3d projectionOfMeanVectorOnIndividualTranslationVector = projectionFactor * translationVectorsPerPC[mostProbableIndex][j];
+    //     std::cout << "Projection of mean vector on individual translation vector: " << projectionOfMeanVectorOnIndividualTranslationVector.transpose() << std::endl;
+    //     Eigen::Vector3d rest = meanTranslationVector - projectionOfMeanVectorOnIndividualTranslationVector;
+    //     std::cout << "Rest: " << rest.transpose() << std::endl;
     
-        translationFactorsWithRest[mostProbableIndex][j].first = projectionFactor;
-        translationFactorsWithRest[mostProbableIndex][j].second = rest;
-        translationFactorsWithRest[j][mostProbableIndex].first = 1.0 - projectionFactor;
-        translationFactorsWithRest[j][mostProbableIndex].second = rest;
-    }
+    //     translationFactorsWithRest[mostProbableIndex][j].first = projectionFactor;
+    //     translationFactorsWithRest[mostProbableIndex][j].second = rest;
+    //     translationFactorsWithRest[j][mostProbableIndex].first = 1.0 - projectionFactor;
+    //     translationFactorsWithRest[j][mostProbableIndex].second = rest;
+    // }
 
-    std::cout << "Translation factors with rest: " << std::endl;
-    for(int i = 0; i < translationFactorsWithRest.size(); i++)
-    {
-        for(int j = 0; j < translationFactorsWithRest[i].size(); j++)
-        {
-            std::cout << "Translation factor " << i << " with other vector: " << j << ": " << translationFactorsWithRest[i][j].first << std::endl;
-            std::cout << "Rest: " << translationFactorsWithRest[i][j].second.transpose() << std::endl;
-        }
-    }
+    // std::cout << "Translation factors with rest: " << std::endl;
+    // for(int i = 0; i < numberFiles; i++)
+    // {
+    //     for(int j = 0; j < numberFiles; j++)
+    //     {
+    //         std::cout << "Translation factor " << i << " with other vector: " << j << ": " << mappingMatrix.GetTranslationFactorWithRest(i, j).first << std::endl;
+    //         std::cout << "Rest: " << mappingMatrix.GetTranslationFactorWithRest(i, j).second.transpose() << std::endl;
+    //     }
+    // }
 
     std::vector<Eigen::Vector3d> finalTranslationVectorsPerPc(numberFiles, Eigen::Vector3d::Zero());
     for(int i = 0; i < numberFiles; i++)
     {
-        Eigen::Vector3d translation = (translationVectorsPerPC[i][mostProbableIndex]) * translationFactorsWithRest[i][mostProbableIndex].first + translationFactorsWithRest[i][mostProbableIndex].second;
-        finalTranslationVectorsPerPc[i] = translation;
+        finalTranslationVectorsPerPc[i] = (mappingMatrix.GetTransformation(i, mostProbableIndex).GetTranslation()) * mappingMatrix.GetTranslationFactorWithRest(i, mostProbableIndex).first + mappingMatrix.GetTranslationFactorWithRest(i, mostProbableIndex).second;        
         std::cout << "Final translation vector for point cloud " << i << ": " << finalTranslationVectorsPerPc[i].transpose() << std::endl;
     }
 
@@ -209,7 +213,7 @@ int main()
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredPointCloudTransformed(new pcl::PointCloud<pcl::PointXYZRGB>);
 
         Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
-        Eigen::Matrix3d rotationMatrix = Eigen::AngleAxis<double>(correctedAngles[i], Eigen::Vector3d(0, 0, 1)).toRotationMatrix();
+        Eigen::Matrix3d rotationMatrix = Eigen::AngleAxis<double>(correctedAngles[i] + 0.02, Eigen::Vector3d(0, 0, 1)).toRotationMatrix();
         transform.block<3, 3>(0, 0) = rotationMatrix;
         // if(std::isinf(finalTranslationVectorsPerPc[i][0]))
         // {
@@ -219,7 +223,7 @@ int main()
         // {
         //     transform.block<3, 1>(0, 3) = initialTranslationVectors[i];
         // }
-        transform.block<3, 1>(0, 3) = initialTranslationVectors[i] /*+ finalTranslationVectorsPerPc[i]*/;
+        transform.block<3, 1>(0, 3) = initialTranslationVectors[i] + finalTranslationVectorsPerPc[i];
         finalTransformations.push_back(transform);
         Referee::Transformations::TransformPointCloud<pcl::PointXYZRGB>(coloredPointCloud, transform);
 
