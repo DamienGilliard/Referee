@@ -231,12 +231,16 @@ int main()
     }
 
     std::vector<std::pair<Eigen::Vector3d, Eigen::Matrix4d>> originsAndTransformations;
+    std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> originsAndTranslations;
     for(int i = 0; i < numberFiles; i++)
     {
         Eigen::Vector3d initialTranslationVector = initialTranslationVectors[i];
         Eigen::Matrix4d transformation = finalTransformations[i];
         originsAndTransformations.push_back(std::make_pair(initialTranslationVector, transformation));
+        originsAndTranslations.push_back(std::make_pair(initialTranslationVector, transformation.block<3, 1>(0, 3)));
     }
+
+    double angle = Referee::Transformations::CalculateResultingRotationAngle(originsAndTranslations);
 
     Referee::FileBasedVisualisation::Visualisation visualisation;
     visualisation.VisualiseTransformations(originsAndTransformations, coloredFinalPointCloud);
