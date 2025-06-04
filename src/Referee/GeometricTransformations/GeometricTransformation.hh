@@ -9,6 +9,7 @@
 #include <iostream>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
+#include <cmath>
 
 namespace Referee::Transformations
 {
@@ -82,4 +83,13 @@ namespace Referee::Transformations
      * @return Eigen::Vector3d Resulting translation of the transformation matrix
      */
     Eigen::Vector3d CalculateResultingTranslation(Eigen::Matrix4d transformationMatrix, Eigen::Vector3d poseOrigin);
+
+    /**
+     * @brief Compute the resulting rotation angle from a set of positions and translations. It can be compared to the rotational of a set of translations in space
+     * @param positions Vector of positions in space
+     * @param translations Vector of translations corresponding to the positions
+     * @return double Resulting rotation angle in radians
+     * @note The positions and translations should be in the same order, meaning that the translation at index i corresponds to the position at index i.
+     */
+    double CalculateResultingRotationAngle(std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> positionsAndTranslations);
 } // Referee::Transformations

@@ -70,4 +70,24 @@ namespace Referee::Transformations
         Eigen::Vector3d resultingTranslation = (rotationMatrix * poseOrigin - poseOrigin) + translationVector;
         return resultingTranslation;
     }
+
+    double CalculateResultingRotationAngle(std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> positionsAndTranslations)
+    {
+        Eigen::Vector3d sumOfMoments = Eigen::Vector3d::Zero();
+        Eigen::Vector3d unitCorrection = Eigen::Vector3d::Zero();
+        for (std::pair<Eigen::Vector3d, Eigen::Vector3d> pair : positionsAndTranslations)
+        {
+            sumOfMoments += pair.first.cross(pair.second);
+            std::cout << "[DEBUG]Sum of moments: " << sumOfMoments.transpose() << std::endl;
+            Eigen::Vector3d unitZVector(0, 0, 1);
+            unitCorrection += pair.first.cross(unitZVector).cross(pair.first);
+        }
+        double angle = std::atan2(sumOfMoments.norm(), unitCorrection.norm());
+        if(sumOfMoments.z() < 0)
+        {
+            angle = -angle; // Ensure the angle is in the correct direction
+        }
+        std::cout << "[DEBUG]Calculated resulting rotation angle: " << angle << std::endl;
+        return angle;
+    }
 } // Referee::Transformations
