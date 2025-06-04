@@ -216,10 +216,6 @@ namespace Referee::Mapping
                             matchedIndex = j;
                             rotationAngle = this->__mappingMatrix[i][j].GetRotationAngle() * rotationCoefficients(i, j);
                         } 
-                        else 
-                        {
-                            std::cerr << "Warning: rotationCoefficients(" << j << ", " << i << ") is zero or uninitialized." << std::endl;
-                        }
                     }
                 }
             }
@@ -256,10 +252,6 @@ namespace Referee::Mapping
                             matchedIndex = j;
                             rotationAngle = this->__mappingMatrix[i][j].GetRotationAngle() * rotationCoefficients(i, j);
                         } 
-                        else 
-                        {
-                            std::cerr << "Warning: rotationCoefficients(" << j << ", " << i << ") is zero or uninitialized." << std::endl;
-                        }
                     }
                 }
             }
