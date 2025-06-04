@@ -81,7 +81,6 @@ namespace Referee::FileBasedVisualisation
         viewer.setBackgroundColor(0.0, 0.0, 0.0);
         viewer.addPointCloud<pcl::PointXYZRGB>(pointCloud, "sample cloud");
         viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
-        viewer.addCoordinateSystem(5.0);
         viewer.setSize(3000, 2250);
         viewer.initCameraParameters();
         viewer.setCameraPosition(0, 0, 900, 0, 0, 0, 0, 1, 0);
@@ -110,6 +109,8 @@ namespace Referee::FileBasedVisualisation
             viewer.addArrow<pcl::PointXYZ>(transformedAxesEnds[0], transformedPoint, 1.0f, 0.0f, 0.0f, false, "arrowXTransformed" + std::to_string(count));
             viewer.addArrow<pcl::PointXYZ>(transformedAxesEnds[1], transformedPoint, 0.0f, 1.0f, 0.0f, false, "arrowYTransformed" + std::to_string(count));
             viewer.addArrow<pcl::PointXYZ>(transformedPoint, point, 0.0f, 0.0f, 1.0f, false, "translation" + std::to_string(count));
+            viewer.addLine<pcl::PointXYZ>(pcl::PointXYZ(-45, -25, 0), pcl::PointXYZ(-35, -25, 0), 0.0f, 0.0f, 0.0f, "line" + std::to_string(count));
+            viewer.addText3D("<--10m scale-->", pcl::PointXYZ(-45, -25, 0), 0.5, 0.0f, 0.0f, 0.0f, "text" + std::to_string(count));
             count++;
         }
 
