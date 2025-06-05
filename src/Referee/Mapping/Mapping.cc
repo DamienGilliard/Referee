@@ -82,7 +82,7 @@ namespace Referee::Mapping
                 }
                 stdDevRotation += std::pow(__mappingMatrix[i][j].GetRotationAngle() - meanRotationAngle, 2);
             }
-            __stdDevRotations[i] = stdDevRotation;
+            __stdDevRotations[i] = std::sqrt(stdDevRotation / nonZeroMatrices);
             std::cout << "[DEBUG] covariance matrix:" << translationStats.second << std::endl;
 
             std::cout << "[DEBUG] determinant of covariance matrix: " << translationStats.second.determinant() << std::endl;
