@@ -1,5 +1,9 @@
+#pragma once
+
 #include <Eigen/Geometry>
+#include <Eigen/Dense>
 #include <numeric>
+#include <vector>
 
 namespace Referee::Probability
 {
