@@ -169,14 +169,7 @@ namespace Referee::Mapping
     {
         double mostTrustworthyRotationAngle = this->__meanTransformations[mostTrustworthyPointCloudIndex].GetRotationAngle();
         int numberFiles = this->__mappingMatrix.size();
-        Eigen::MatrixXd rotationCoefficients(numberFiles, numberFiles);
-        for(int i = 0; i < numberFiles; i++)
-        {
-            for(int j = 0; j < numberFiles; j++)
-            {
-                rotationCoefficients(i, j) = 0;
-            }
-        }
+        Eigen::MatrixXd rotationCoefficients = Eigen::MatrixXd::Zero(numberFiles, numberFiles);
 
         for(int i : this->__connectivityMatrix[mostTrustworthyPointCloudIndex])
         {
@@ -189,6 +182,8 @@ namespace Referee::Mapping
 
             double alpha = (mostTrustworthyRotationAngle/rotationAngle);
             rotationCoefficients(mostTrustworthyPointCloudIndex, i) = alpha;
+            std::cout << "[DEBUG]alpha: " << alpha << std::endl;
+            rotationCoefficients(i, mostTrustworthyPointCloudIndex) = 1 - alpha;
 
         }
 
