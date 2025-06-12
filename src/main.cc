@@ -101,7 +101,7 @@ int main()
         Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
         Eigen::Matrix3d rotationMatrix = Eigen::AngleAxis<double>(correctedAngles[i], Eigen::Vector3d(0, 0, 1)).toRotationMatrix();
         transform.block<3, 3>(0, 0) = rotationMatrix;
-        transform.block<3, 1>(0, 3) = initialTranslationVectors[i] + finalTranslationVectorsPerPc[i];
+        transform.block<3, 1>(0, 3) = /*initialTranslationVectors[i] + */finalTranslationVectorsPerPc[i];
         finalTransformations.push_back(transform);
         Eigen::Vector3d initialTranslationVector = initialTranslationVectors[i];
         Eigen::Matrix4d transformation = finalTransformations[i];
@@ -118,14 +118,14 @@ int main()
     {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         pcl::io::loadPLYFile(plyFileNames[i], *coloredPointCloud);
-        Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointXYZRGB>(coloredPointCloud, 0.2f);
+        Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointXYZRGB>(coloredPointCloud, 0.13f);
         for(int j = 0; j < coloredPointCloud->size(); j++)
         {
-            coloredPointCloud->points[j].r = 150 + i*25;
-            coloredPointCloud->points[j].g = 150 ;
-            coloredPointCloud->points[j].b = 250 - i*25;
+            coloredPointCloud->points[j].r = 100 + i*45;
+            coloredPointCloud->points[j].g = 100 ;
+            coloredPointCloud->points[j].b = 250 - i*45;
         }
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredPointCloudTransformed(new pcl::PointCloud<pcl::PointXYZRGB>);
+        Referee::Transformations::TranslatePointCloud<pcl::PointXYZRGB>(coloredPointCloud, initialTranslationVectors[i]);
         Referee::Transformations::TransformPointCloud<pcl::PointXYZRGB>(coloredPointCloud, finalTransformations[i]);
         *coloredFinalPointCloud += *coloredPointCloud;
     }
