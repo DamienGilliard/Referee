@@ -166,6 +166,15 @@ namespace Referee::Mapping
                 this->__connectivityMatrix = connectivityMatrix;
             }
 
+            /**
+             * @brief Set the initial positions of the point clouds
+             * @param initialPositions Initial positions of the point clouds
+             */
+            void SetInitialPositions(std::vector<Eigen::Vector3d> initialPositions)
+            {
+                this->__initialPositions = initialPositions;
+            }
+
             std::vector<std::vector<int>> GetConnectivityMatrix()
             {
                 return this->__connectivityMatrix;
@@ -339,6 +348,8 @@ namespace Referee::Mapping
              * @brief for each point cloud, the indices of the other point clouds with which transformations were computed
              */
             std::vector<std::vector<int>> __connectivityMatrix;
+
+            std::vector<Eigen::Vector3d> __initialPositions; // initial rotation axes for each point cloud, used to compute the initial rotation angles
     };
     
 
