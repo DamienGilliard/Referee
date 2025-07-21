@@ -164,6 +164,35 @@ namespace Referee::Mapping
         }
         return meanTranslationVectorsAndStdDevs;
     }
+
+    double MappingMatrix::ComputeMeanTranslationInducedRotation()
+    {
+        double meanTranslationInducedRotation = 0.0;
+        int count = 0;
+        for (int i = 0; i < this->__connectivityMatrix.size(); i++)
+        {
+            for (int j = 0; j < this->__connectivityMatrix[i].size(); j++)
+            {
+                Eigen::Vector3d poseOfI = this->__initialPositions[i];
+                Eigen::Vector3d poseOfJ = this->__initialPositions[j];
+                Eigen::Vector3d translation = this->__mappingMatrix[i][j].GetTranslation();
+
+                // Compute the translation induced rotation
+                Eigen::Vector3d v1 = poseOfJ + translation;
+                Eigen::Vector3d v2 = v1 - poseOfI;
+                Eigen::Vector3d crossProduct = v1.normalized().cross(v2.normalized());
+                double angle = std::asin(crossProduct.norm());
+                if (crossProduct.z() < 0)
+                {
+                    angle = -angle; // Ensure the angle is in the correct direction
+                }
+                meanTranslationInducedRotation += angle;
+                count++;
+            }
+        }
+        meanTranslationInducedRotation /= count;
+        return meanTranslationInducedRotation;
+    }
     
     void MappingMatrix::ComputeRotationCoefficients(int mostTrustworthyPointCloudIndex)
     {

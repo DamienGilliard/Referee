@@ -22,6 +22,7 @@ int main()
     std::vector<std::vector<int>> matrix;
     Referee::Mapping::CreateConnectivityMatrix(initialTranslationVectors, 3, 30, matrix);
     mappingMatrix.SetConnectivityMatrix(matrix);
+    mappingMatrix.SetInitialPositions(initialTranslationVectors);
 
     int count = 0;
 
@@ -68,7 +69,8 @@ int main()
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////    
     //                                                 ROTATIONS
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+    double meanTranslationInducedRotation = mappingMatrix.ComputeMeanTranslationInducedRotation();
+    std::cout << "Mean translation induced rotation: " << meanTranslationInducedRotation << std::endl;
     std::vector<double> initialRotationAngles = mappingMatrix.GetInitialRotationAngles();
     std::vector<double> correctedAngles = Referee::Probability::Compute1DGradienDescent(meansAndStdDevs, initialRotationAngles, 0.00001, 10000, 0.000001);
     for(int i = 0; i < initialRotationAngles.size(); i++)
