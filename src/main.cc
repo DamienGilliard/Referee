@@ -46,8 +46,8 @@ int main()
                 PCL_ERROR("Couldn't read file %s \n", plyFileNames[matrix[i][j]].c_str());
                 return 0;
             }
-            Referee::Utils::Filtering::CropPointCloud<pcl::PointNormal>(temporaryTargetPointCloud, -40, -40, -100, 40, 40, 8000);
-            Referee::Utils::Filtering::CropPointCloud<pcl::PointNormal>(temporarySourcePointCloud, -40, -40, -100, 40, 40, 8000);
+            Referee::Utils::Filtering::CropPointCloud<pcl::PointNormal>(temporaryTargetPointCloud, -30, -30, -100, 30, 30, 8000);
+            Referee::Utils::Filtering::CropPointCloud<pcl::PointNormal>(temporarySourcePointCloud, -30, -30, -100, 30, 30, 8000);
             Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(temporaryTargetPointCloud, 0.05);
             Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(temporarySourcePointCloud, 0.05);
             Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(temporarySourcePointCloud, initialTranslationVectors[i]);
