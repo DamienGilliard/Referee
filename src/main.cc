@@ -85,8 +85,20 @@ int main()
     //                                               TRANSLATION
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::pair<int, double> mostProbableTranslation = mappingMatrix.GetMostProbableTranslation();
-    int mostProbableIndex = mostProbableTranslation.first;
+    // std::pair<int, double> mostProbableTranslation = mappingMatrix.GetMostProbableTranslation();
+    int mostProbableIndex = 0;
+    Eigen::Vector3d mostProbableTranslationVector = mappingMatrix.GetMeanTranslationVector(0);
+
+    for (int i = 1; i < mappingMatrix.GetConnectivityMatrix().size(); i++)
+    {
+        Eigen::Vector3d translation = mappingMatrix.GetMeanTranslationVector(i);
+        if (translation.norm() < mostProbableTranslationVector.norm())
+        {
+            mostProbableIndex = i;
+            mostProbableTranslationVector = translation;
+        }
+    }
+
     mappingMatrix.ComputeTranslationCoefficients(mostProbableIndex);
     std::vector<std::vector<std::pair<double, Eigen::Vector3d>>> translationFactorsWithRest(numberFiles, std::vector<std::pair<double, Eigen::Vector3d>>(numberFiles, std::make_pair(0.0, Eigen::Vector3d::Zero())));
     Eigen::Vector3d meanTranslationVector = mappingMatrix.GetMeanTranslationVector(mostProbableIndex);
