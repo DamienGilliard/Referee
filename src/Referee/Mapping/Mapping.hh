@@ -260,6 +260,12 @@ namespace Referee::Mapping
             std::vector<std::pair<double, Eigen::Vector3d>> GetMeanTranslationVectorsAndStdDevs();
 
             /**
+             * @brief Compute the mean pose rotation error by computing the mean translation induced rotation
+             * @return Mean translation induced rotation
+             */
+            double ComputeMeanTranslationInducedRotation();
+
+            /**
              * @brief Compute the rotation coefficients between the point clouds
              * @param mostTrustworthyRotationAngle The rotation angle of the most trustworthy point cloud
              * @param mostTrustworthyPointCloudIndex The index of the most trustworthy point cloud

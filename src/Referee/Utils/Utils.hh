@@ -134,7 +134,9 @@ namespace Referee
                 pcl::VoxelGrid<PointT> voxelGridFilter;
                 voxelGridFilter.setInputCloud(cloud);
                 voxelGridFilter.setLeafSize(leafSize, leafSize, leafSize);
-                voxelGridFilter.filter(*cloud);
+                voxelGridFilter.setDownsampleAllData(true); // Ensure all data is downsampled
+                voxelGridFilter.filter(*voxelizedCloud);
+                cloud.swap(voxelizedCloud);
             }
         } // Filtering
 
