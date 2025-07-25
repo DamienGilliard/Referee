@@ -132,7 +132,7 @@ int main()
     {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         pcl::io::loadPLYFile(plyFileNames[i], *coloredPointCloud);
-        Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointXYZRGB>(coloredPointCloud, 0.13f);
+        Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointXYZRGB>(coloredPointCloud, 0.03);
         for(int j = 0; j < coloredPointCloud->size(); j++)
         {
             coloredPointCloud->points[j].r = 100 + i*45;
@@ -148,6 +148,9 @@ int main()
     finalRotation.block<3, 3>(0, 0) = Eigen::AngleAxisd(-finalAngle, Eigen::Vector3d(0, 0, 1)).toRotationMatrix();
     Referee::Transformations::TransformPointCloud<pcl::PointXYZRGB>(coloredFinalPointCloud, finalRotation);
 
+    // rasterize
+    Referee::Raster::Rasterizer rasterizer;
+    rasterizer.CreateGeoTIFFDEMFromPointCloud(coloredFinalPointCloud, "output.tif", 1.0, coordSys);
     Referee::FileBasedVisualisation::Visualisation visualisation;
     visualisation.VisualiseTransformations(originsAndTransformations, coloredFinalPointCloud);
     pcl::io::savePLYFile("coloredFinalPointCloud.ply", *coloredFinalPointCloud);
