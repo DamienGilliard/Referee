@@ -68,7 +68,10 @@ namespace Referee::Utils
 
                 ConvertLatLonAltToCartesian(latDeg, lonDeg, alt, x, y, z, CoordinateSystem::CoordinateSystem::DEG, CoordinateSystem::CoordinateSystem::LV95);
             }
-            
+            else 
+            {
+                std::cerr << "[From Referee::Utils::Conversions::ConvertLatLonAltToCartesian] Conversion from " << static_cast<int>(fromCoordSys) << " to " << static_cast<int>(toCoordSys) << " is currently not supported." << std::endl;
+            }
         }
     }
     namespace FileIterators

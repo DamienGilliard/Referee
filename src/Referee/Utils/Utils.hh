@@ -8,7 +8,7 @@
 #include <algorithm>
 
 #include <pcl/point_types.h>
-#include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/approximate_voxel_grid.h>
 #include <pcl/filters/crop_box.h>
 #include <pcl/features/normal_3d.h>
 #include <Eigen/Dense>
@@ -23,13 +23,13 @@ namespace Referee
             enum class CoordinateSystem
             /**
              * @brief Enum for different coordinate systems.
-             * Currently supported: UTM, DMS, DEG, LV95
+             * Currently supported: WGS84, DMS, DEG, LV95
              */
             {
-                UTM,    //Universal Transverse Mercator 
+                WGS84,    //World Geodetic System 1984
                 DMS,    //Degrees, Minutes, Seconds
                 DEG,    //Decimal Degrees
-                LV95,   //Swiss Grid (translation of UTM)
+                LV95,   //Swiss Grid (translation of WGS84)
             };
             
             /**
@@ -131,7 +131,8 @@ namespace Referee
             template<typename PointT>
             void VoxelizePointCloud(typename pcl::PointCloud<PointT>::Ptr cloud, double leafSize)
             {
-                pcl::VoxelGrid<PointT> voxelGridFilter;
+                typename pcl::PointCloud<PointT>::Ptr voxelizedCloud(new pcl::PointCloud<PointT>);
+                pcl::ApproximateVoxelGrid<PointT> voxelGridFilter;
                 voxelGridFilter.setInputCloud(cloud);
                 voxelGridFilter.setLeafSize(leafSize, leafSize, leafSize);
                 voxelGridFilter.setDownsampleAllData(true); // Ensure all data is downsampled
