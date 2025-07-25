@@ -4,3 +4,6 @@
 [submodule "src/3rd_party/GlobalMatch"]
 	path = src/3rd_party/GlobalMatch
 	url = git@github.com:DamienGilliard/GlobalMatch.git
+[submodule "src/3rd_party/gdal"]
+	path = src/3rd_party/gdal
+	url = git@github.com:OSGeo/gdal.git

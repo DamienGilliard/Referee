@@ -19,6 +19,12 @@ if(NOT GIT_SUBMOD_RESULT EQUAL "0")
     message(FATAL_ERROR "git submodule update --init --recursive failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
 endif()
 
+set(CURL_LIBRARY /lib/x86_64-linux-gnu/libcurl.so CACHE FILEPATH "" FORCE)
+set(CURL_INCLUDE_DIR /usr/include CACHE PATH "" FORCE)
+set(CMAKE_SKIP_BUILD_RPATH FALSE)
+set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 ################################
 # Dynamic library of Referee
 ################################
@@ -33,13 +39,23 @@ add_subdirectory(Referee)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/GlobalMatch)
 
 # pcl
-find_package(PCL 1.14 REQUIRED COMPONENTS common io visualization filters segmentation features surface kdtree octree search sample_consensus registration keypoints tracking recognition)
+find_package(PCL 1.15 REQUIRED COMPONENTS common io visualization filters segmentation features surface kdtree octree search sample_consensus registration keypoints tracking recognition)
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-target_link_libraries(${SHARED_LIB_NAME} ${PCL_LIBRARIES} GlobalMatch)
-
+# GDAL
+## ↓↓↓ Avoid running GDAL tests in my project ↓↓↓
+set(SAVED_BUILD_TESTING ${BUILD_TESTING})
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+## ^^^ Avoid running GDAL tests in my project ^^^
+set(GDAL_USE_TIFF_INTERNAL ON CACHE BOOL "" FORCE)
+set(GDAL_USE_GEOTIFF_INTERNAL ON CACHE BOOL "" FORCE)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/gdal)
+set(BUILD_TESTING ${SAVED_BUILD_TESTING})
+# # to make sure GDAL is built before referee is linked (had some issues with this)
+# add_dependencies(${SHARED_LIB_NAME} GDAL)
+target_link_libraries(${SHARED_LIB_NAME} ${PCL_LIBRARIES} GlobalMatch GDAL)
 
 ############
 # Executable
