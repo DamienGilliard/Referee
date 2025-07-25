@@ -11,3 +11,4 @@
 #include "Referee/GeometricTransformations/GeometricTransformation.hh"
 #include "Referee/Mapping/Mapping.hh"
 #include "Referee/Probability/Probability.hh"
+#include "Referee/Raster/Raster.hh"
