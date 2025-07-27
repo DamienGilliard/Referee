@@ -129,7 +129,7 @@ namespace Referee
              * @param leafSize Leaf size of the voxel grid
              */
             template<typename PointT>
-            void VoxelizePointCloud(typename pcl::PointCloud<PointT>::Ptr cloud, double leafSize)
+            void VoxelizePointCloud(typename pcl::PointCloud<PointT>::Ptr &cloud, double leafSize)
             {
                 typename pcl::PointCloud<PointT>::Ptr voxelizedCloud(new pcl::PointCloud<PointT>);
                 pcl::ApproximateVoxelGrid<PointT> voxelGridFilter;
