@@ -109,9 +109,10 @@ namespace Referee
              * @param maxX Maximum x value of bounding box
              * @param maxY Maximum y value of bounding box
              * @param maxZ Maximum z value of bounding box
+             * @param negativeCrop If true, crops everything outside the bounding box, otherwise crops everything inside the bounding box
              */
             template<typename PointT>
-            void CropPointCloud(typename pcl::PointCloud<PointT>::Ptr cloud, double minX, double minY, double minZ, double maxX, double maxY, double maxZ)
+            void CropPointCloud(typename pcl::PointCloud<PointT>::Ptr cloud, double minX, double minY, double minZ, double maxX, double maxY, double maxZ, bool negativeCrop = false)
             {
                 pcl::CropBox<PointT> cropBoxFilter;
                 cropBoxFilter.setInputCloud(cloud);
@@ -119,6 +120,7 @@ namespace Referee
                 Eigen::Vector4f maxPoint(maxX, maxY, maxZ, 1.0);
                 cropBoxFilter.setMin(minPoint);
                 cropBoxFilter.setMax(maxPoint);
+                cropBoxFilter.setNegative(negativeCrop);
                 cropBoxFilter.filter(*cloud);
             }
             
