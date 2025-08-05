@@ -11,6 +11,27 @@
 #include <unsupported/Eigen/MatrixFunctions>
 #include "../../3rd_party/GlobalMatch/code/global_match/stem_mapping.h"
 #include "../../3rd_party/GlobalMatch/code/global_match/stem_matching.h"
+#include <graaflib/graph.h>
+#include <graaflib/io/dot.h>
+#include <graaflib/algorithm/minimum_spanning_tree/prim.h>
+
+
+// Hash function for Eigen::Vector3d to use it in unordered_map
+// This is necessary because Eigen::Vector3d does not have a hash function by default
+namespace std 
+{
+    template <>
+    struct hash<Eigen::Vector3d> 
+    {
+        std::size_t operator()(const Eigen::Vector3d& v) const noexcept 
+        {
+            std::size_t h1 = std::hash<double>{}(v.x());
+            std::size_t h2 = std::hash<double>{}(v.y());
+            std::size_t h3 = std::hash<double>{}(v.z());
+            return h1 ^ (h2 << 1) ^ (h3 << 2);
+        }
+    };
+}
 
 namespace Referee::Mapping
 {
@@ -356,7 +377,73 @@ namespace Referee::Mapping
              */
             std::vector<std::vector<int>> __connectivityMatrix;
 
-            std::vector<Eigen::Vector3d> __initialPositions; // initial rotation axes for each point cloud, used to compute the initial rotation angles
+            /**
+             * @brief Initial positions of the point clouds, used to compute the initial rotation angles
+             */
+            std::vector<Eigen::Vector3d> __initialPositions;
+
+            /**
+             * @brief For each point cloud we store the final translation vector that should be applied to the point cloud to get it in the global coordinate system
+             */
+            std::vector<Eigen::Vector3d> __finalTranslations;
+    };
+
+    enum class GraphType
+    {
+        Undirected, // Undirected graph
+        Directed // Directed graph
+    };
+
+    class Graph
+    {
+        public: 
+            /**
+             * @brief Create a new undirected graph instance if none exists (singleton pattern)
+             * @return Graph instance
+             */
+            static Graph& CreateUndirectedGraph();
+
+            /**
+             * @brief Get the instance of the undirected graph
+             * @return Graph instance
+             */
+            static Graph& GetInstanceOfUndirectedGraph();
+
+            /**
+             * @brief Add a vertex to the graph
+             * @param vertex The vertex to add
+             */
+            void AddVertex(Eigen::Vector3d vertex);
+
+            /**
+             * @brief Add an edge to the graph
+             * @param vertex1 The first vertex of the edge
+             * @param vertex2 The second vertex of the edge
+             * @param weight The weight to assign to the edge
+             */
+            void AddEdge(Eigen::Vector3d vertex1, 
+                         Eigen::Vector3d vertex2, 
+                         double weight);
+            /**
+             * @brief Compute the minimum spanning tree of the graph using Prim's algorithm
+             * @return A vector of vertices in the minimum spanning tree
+             */
+            std::vector<std::pair<long unsigned int, long unsigned int>> ComputeMinimumSpanningTree(Eigen::Vector3d startVertex);
+
+            void PrintGraph();
+
+        private:
+            Graph(GraphType type);
+
+            std::unordered_map<Eigen::Vector3d, int> __vertexIndices; // Map to store the positions to their indices.
+
+            static Graph* __instance;
+
+            int __nVertices = 0; // Number of vertices in the graph
+
+            const bool __isDirected;
+
+            graaf::undirected_graph<int, double> __undirectedGraph; // Undirected graph to store the connectivity between the point clouds
     };
     
 

@@ -358,6 +358,86 @@ namespace Referee::Mapping
         }
     }
 
+    Graph& Graph::CreateUndirectedGraph()
+    {
+        if(!Graph::__instance)
+        {
+            Graph::__instance = new Graph(GraphType::Undirected);
+        }
+        return *Graph::__instance;
+    }
+
+    Graph& Graph::GetInstanceOfUndirectedGraph()
+    {
+        if(!Graph::__instance)
+        {
+            Graph::__instance = &CreateUndirectedGraph();
+        }
+        if(Graph::__instance->__isDirected)
+        {
+            std::cerr << "Error: Trying to get an undirected graph instance, but the instance is directed." << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        return *Graph::__instance;
+    }
+
+    void Graph::AddVertex(Eigen::Vector3d vertex)
+    {
+        int index = this->__nVertices;
+        this->__vertexIndices[vertex] = index;
+        this->__nVertices++;
+        __undirectedGraph.add_vertex(index);
+    }
+
+    void Graph::AddEdge(Eigen::Vector3d vertex1, 
+                        Eigen::Vector3d vertex2, 
+                        double distance)
+    {
+        int index1 = this->__vertexIndices[vertex1];
+        int index2 = this->__vertexIndices[vertex2];
+        __undirectedGraph.add_edge(index1, index2, distance);
+    }
+
+    std::vector<std::pair<long unsigned int, long unsigned int>> Graph::ComputeMinimumSpanningTree(Eigen::Vector3d rootVertex)
+    {
+        int rootVertexIndex = this->__vertexIndices[rootVertex];
+        if(!__undirectedGraph.has_vertex(rootVertexIndex))
+        {
+            std::cerr << "Error: Root vertex is not part of the graph." << std::endl;
+            exit(EXIT_FAILURE);
+        }
+
+        auto mstEdgesOpt = graaf::algorithm::prim_minimum_spanning_tree(this->__undirectedGraph, rootVertexIndex);
+
+        if (!mstEdgesOpt) {
+            std::cerr << "Error: Could not compute minimum spanning tree." << std::endl;
+            return {};
+        }
+        std::vector<std::pair<long unsigned int, long unsigned int>> mstEdges = mstEdgesOpt.value(); // mstEdges is std::vector<std::pair<size_t, size_t>>
+        return mstEdges;
+    }
+
+    void Graph::PrintGraph()
+    {
+        graaf::io::to_dot(this->__undirectedGraph, "./graph.dot");
+        std::cout << "Graph has been written to graph.dot" << std::endl;
+    }
+    
+    Graph::Graph(GraphType type): __isDirected(type == GraphType::Directed)
+    {
+        if(type == GraphType::Undirected)
+        {
+            this->__undirectedGraph = graaf::undirected_graph<int, double>();
+        }
+        else
+        {
+            std::cerr << "Error: Unsupported graph type." << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    Graph* Graph::__instance = nullptr;
+
     void CreateConnectivityMatrix(std::vector<Eigen::Vector3d> geolocations, int knn, double maxDistance, std::vector<std::vector<int>>& matrix)
     {
         std::vector<std::vector<std::pair<int, double>>> distancesToOtherPcs;
