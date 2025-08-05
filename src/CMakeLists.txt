@@ -5,7 +5,7 @@ if(POLICY CMP0079)
 endif()
 project(Referee)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(ExternalProject)
@@ -34,9 +34,16 @@ add_subdirectory(Referee)
 ###################################
 # 3rd party libraries paths
 ###################################
-# GlobalMatch
 
+# OpenMPI
+include_directories(/usr/lib/x86_64-linux-gnu/openmpi/include)
+
+# GlobalMatch
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/GlobalMatch)
+
+# Graaf
+include_directories(${CMAKE_SOURCE_DIR}/3rd_party/graaf/include)
+target_include_directories(${SHARED_LIB_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/3rd_party/graaf/include)
 
 # pcl
 find_package(PCL 1.15 REQUIRED COMPONENTS common io visualization filters segmentation features surface kdtree octree search sample_consensus registration keypoints tracking recognition)
