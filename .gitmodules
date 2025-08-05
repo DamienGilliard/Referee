@@ -7,3 +7,6 @@
 [submodule "src/3rd_party/gdal"]
 	path = src/3rd_party/gdal
 	url = git@github.com:OSGeo/gdal.git
+[submodule "src/3rd_party/graaf"]
+	path = src/3rd_party/graaf
+	url = git@github.com:bobluppes/graaf.git
