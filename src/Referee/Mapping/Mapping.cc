@@ -367,6 +367,27 @@ namespace Referee::Mapping
         return *Graph::__instance;
     }
 
+    Graph& Graph::CreateUndirectedGraph(std::vector<Eigen::Vector3d> vertices, 
+                                        std::vector<std::vector<int>> edges)
+    {
+        Graph& graph = Graph::CreateUndirectedGraph();
+        for(const auto& vertex : vertices)
+        {
+            graph.AddVertex(vertex);
+        }
+        for(int i = 0; i < edges.size(); i++)
+        {
+            for(int j = 0; j < edges[i].size(); j++)
+            {
+                if(i != edges[i][j]) // avoid self-loops
+                {
+                    graph.AddEdge(vertices[i], vertices[edges[i][j]], (vertices[i] - vertices[edges[i][j]]).norm());
+                }
+            }
+        }
+        return graph;
+    }
+
     Graph& Graph::GetInstanceOfUndirectedGraph()
     {
         if(!Graph::__instance)

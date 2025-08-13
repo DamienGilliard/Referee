@@ -404,6 +404,14 @@ namespace Referee::Mapping
             static Graph& CreateUndirectedGraph();
 
             /**
+             * @brief Create a new undirected graph singleton instance with given vertices and edges
+             * @param vertices List of vertices to add to the graph
+             * @param edges List of edges to add to the graph
+             * @return Graph instance
+             */
+            static Graph& CreateUndirectedGraph(std::vector<Eigen::Vector3d> vertices, std::vector<std::vector<int>> edges);
+
+            /**
              * @brief Get the instance of the undirected graph
              * @return Graph instance
              */
