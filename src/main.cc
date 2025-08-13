@@ -1,5 +1,43 @@
 #include "Referee.hh"
-#include <Eigen/Geometry>
+
+
+std::mutex mutex;
+// A function we will run in multiple threads
+void ComputeTransformations(Eigen::Vector3d initialTranslationSource,
+                            Eigen::Vector3d initialTranslationTarget,
+                            int sourcePointCloudFileIndex,
+                            int targetPointCloudFileIndex,
+                            std::vector<std::string>& sourcePointCloudFileNames,
+                            double voxelSize,
+                            Referee::Mapping::MappingMatrix& mappingMatrix)
+{
+    pcl::PointCloud<pcl::PointNormal>::Ptr sourceCloud(new pcl::PointCloud<pcl::PointNormal>);
+    pcl::PointCloud<pcl::PointNormal>::Ptr targetCloud(new pcl::PointCloud<pcl::PointNormal>);
+    if (pcl::io::loadPLYFile<pcl::PointNormal>(sourcePointCloudFileNames[sourcePointCloudFileIndex], *sourceCloud) == -1)
+    {
+        PCL_ERROR("Couldn't read file %s \n", sourcePointCloudFileNames[sourcePointCloudFileIndex].c_str());
+        return;
+    }
+    if (pcl::io::loadPLYFile<pcl::PointNormal>(sourcePointCloudFileNames[targetPointCloudFileIndex], *targetCloud) == -1)
+    {
+        PCL_ERROR("Couldn't read file %s \n", sourcePointCloudFileNames[targetPointCloudFileIndex].c_str());
+        return;
+    }
+
+    Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(targetCloud, voxelSize);
+    Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(sourceCloud, voxelSize);
+
+    Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(sourceCloud, initialTranslationSource);
+    Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(targetCloud, initialTranslationTarget);
+
+    Eigen::Matrix4d transformationMatrix = Referee::Mapping::ComputePairwiseTransformation(sourceCloud, targetCloud, 
+                                                                                      Referee::Mapping::TransformationComputationMethod::GlobalMatch);
+
+    Referee::Mapping::Transformation transformation(transformationMatrix);
+    mutex.lock();
+    mappingMatrix.SetTransformation(sourcePointCloudFileIndex, targetPointCloudFileIndex, transformation);
+    mutex.unlock();
+}
 
 int main()
 {
@@ -53,33 +91,50 @@ int main()
     pcl::PointCloud<pcl::PointXYZ>::Ptr targetPointCloud(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredFinalPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
+    // Limit the number of concurrent threads to 10
+    const int maxThreads = 6;
+    std::vector<std::thread> threads;
+    std::vector<std::tuple<int, int>> jobs;
+
+    // Prepare all jobs
     for (int i = 0; i < matrix.size(); i++)
     {
         for (int j = 0; j < matrix[i].size(); j++)
         {
-            pcl::PointCloud<pcl::PointNormal>::Ptr temporarySourcePointCloud(new pcl::PointCloud<pcl::PointNormal>);
-            pcl::PointCloud<pcl::PointNormal>::Ptr temporaryTargetPointCloud(new pcl::PointCloud<pcl::PointNormal>);
-            std::cout << "Computing transformation between point cloud " << i << " and point cloud " << matrix[i][j] << std::endl;
-            if (pcl::io::loadPLYFile<pcl::PointNormal>(plyFileNames[i], *temporarySourcePointCloud) == -1)
+            jobs.emplace_back(i, matrix[i][j]);
+        }
+    }
+
+    size_t jobIndex = 0;
+    while (jobIndex < jobs.size())
+    {
+        // Launch up to maxThreads threads
+        threads.clear();
+        for (int t = 0; t < maxThreads && jobIndex < jobs.size(); ++t, ++jobIndex)
+        {
+            int i = std::get<0>(jobs[jobIndex]);
+            int neighborIndex = std::get<1>(jobs[jobIndex]);
+            Eigen::Vector3d initialTranslationSource = initialTranslationVectors[i];
+            Eigen::Vector3d initialTranslationTarget = initialTranslationVectors[neighborIndex];
+
+            std::cout << "Computing transformation between point cloud " << i << " and point cloud " << neighborIndex << std::endl;
+
+            threads.emplace_back(ComputeTransformations,
+                                 initialTranslationSource,
+                                 initialTranslationTarget,
+                                 i,
+                                 neighborIndex,
+                                 std::ref(plyFileNames),
+                                 0.01,
+                                 std::ref(mappingMatrix));
+        }
+        // Wait for all threads in this batch to finish
+        for (auto& thread : threads)
+        {
+            if (thread.joinable())
             {
-                PCL_ERROR("Couldn't read file %s \n", plyFileNames[i].c_str());
-                return 0;
+                thread.join();
             }
-            if (pcl::io::loadPLYFile<pcl::PointNormal>(plyFileNames[matrix[i][j]], *temporaryTargetPointCloud) == -1)
-            {
-                PCL_ERROR("Couldn't read file %s \n", plyFileNames[matrix[i][j]].c_str());
-                return 0;
-            }
-            Referee::Utils::Filtering::CropPointCloud<pcl::PointNormal>(temporaryTargetPointCloud, -30, -30, -100, 30, 30, 8000);
-            Referee::Utils::Filtering::CropPointCloud<pcl::PointNormal>(temporarySourcePointCloud, -30, -30, -100, 30, 30, 8000);
-            Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(temporaryTargetPointCloud, 0.05);
-            Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(temporarySourcePointCloud, 0.05);
-            Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(temporarySourcePointCloud, initialTranslationVectors[i]);
-            Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(temporaryTargetPointCloud, initialTranslationVectors[matrix[i][j]]);
-            Eigen::Matrix4d transformationMatrix = Referee::Mapping::ComputePairwiseTransformation(temporarySourcePointCloud, temporaryTargetPointCloud, Referee::Mapping::TransformationComputationMethod::GlobalMatch);
-            Eigen::Vector3d translation = Referee::Transformations::CalculateResultingTranslation(transformationMatrix, initialTranslationVectors[i]);
-            Referee::Mapping::Transformation Transformation(transformationMatrix);
-            mappingMatrix.SetTransformation(i, matrix[i][j], Transformation);
         }
     }
     mappingMatrix.CalculateMeanTransformationMatrices();

@@ -5,6 +5,10 @@
 #include <vector>
 #include <filesystem>
 #include <sstream>
+#include <thread>
+#include <mutex>
+
+#include <Eigen/Geometry>
 
 #include "Referee/Utils/Utils.hh"
 #include "Referee/Visualisation/Visualisation.hh"
