@@ -3,7 +3,7 @@
 
 std::mutex mutex;
 // A function we will run in multiple threads
-void ComputeTransformations(Eigen::Vector3d initialTranslationSource,
+void ComputeTransformationInThread(Eigen::Vector3d initialTranslationSource,
                             Eigen::Vector3d initialTranslationTarget,
                             int sourcePointCloudFileIndex,
                             int targetPointCloudFileIndex,
@@ -44,7 +44,6 @@ int main()
     std::vector<std::string> geolocationFiles = Referee::Utils::FileIterators::GetFilesInDirectory("../../test_files/geolocations", ".petitpoucet");
     std::vector<std::string> plyFileNames = Referee::Utils::FileIterators::GetFilesInDirectory("../../test_files/scans", ".ply");
     int numberFiles = plyFileNames.size();
-
     if (numberFiles != geolocationFiles.size()) 
     {
         std::cerr << "Number of geolocation files and ply files do not match" << std::endl;
@@ -53,38 +52,17 @@ int main()
 
     Referee::Utils::CoordinateSystem::CoordinateSystem coordSys = Referee::Utils::CoordinateSystem::CoordinateSystem::LV95;
     std::vector<Eigen::Vector3d> initialTranslationVectors = Referee::Utils::FileIterators::GetTranslationVectorsFromFiles(geolocationFiles, coordSys);
-
-    Referee::Mapping::MappingMatrix mappingMatrix(numberFiles);
-
     Eigen::Vector3d meanTranslation =Referee::Transformations::RecenterTranslationVectors(initialTranslationVectors);
+
     std::vector<std::vector<int>> matrix;
     Referee::Mapping::CreateConnectivityMatrix(initialTranslationVectors, 3, 30, matrix);
+    Referee::Mapping::MappingMatrix mappingMatrix(numberFiles);
     mappingMatrix.SetConnectivityMatrix(matrix);
     mappingMatrix.SetInitialPositions(initialTranslationVectors);
 
-    Referee::Mapping::Graph graph = Referee::Mapping::Graph::CreateUndirectedGraph();
-    for (const auto& initialTranslationVector : initialTranslationVectors)
-    {
-        Eigen::Vector3d vertex = initialTranslationVector;
-        graph.AddVertex(vertex);
-    }
-
-    for (int i = 0; i < matrix.size(); i++)
-    {
-        for (int neighbor : matrix[i])
-        {
-            for (int candidateOpposite : matrix[neighbor])
-            {
-                    Eigen::Vector3d vertex = initialTranslationVectors[i];
-                    Eigen::Vector3d neighborVertex = initialTranslationVectors[neighbor];
-                    graph.AddEdge(vertex, neighborVertex, (initialTranslationVectors[i] - initialTranslationVectors[neighbor]).norm());
-                    break;
-            }
-        }
-    }
-
+    Referee::Mapping::Graph graph = Referee::Mapping::Graph::CreateUndirectedGraph(initialTranslationVectors, matrix);
     graph.PrintGraph();
-
+    
     std::vector<std::vector<Eigen::Vector3d>> computedTranslations;
     computedTranslations.resize(numberFiles);
 
@@ -119,7 +97,7 @@ int main()
 
             std::cout << "Computing transformation between point cloud " << i << " and point cloud " << neighborIndex << std::endl;
 
-            threads.emplace_back(ComputeTransformations,
+            threads.emplace_back(ComputeTransformationInThread,
                                  initialTranslationSource,
                                  initialTranslationTarget,
                                  i,
@@ -137,101 +115,39 @@ int main()
             }
         }
     }
-    mappingMatrix.CalculateMeanTransformationMatrices();
-    mappingMatrix.PrintMeanMatrices();
 
     std::tuple<int, double> mostProbableRotation = mappingMatrix.GetMostProbableRotation();
-    int mostProbableIndexRotation = std::get<0>(mostProbableRotation);
-    mappingMatrix.ComputeRotationCoefficients(mostProbableIndexRotation);
-    std::vector<std::pair<double, double>> meansAndStdDevs = mappingMatrix.GetMeanRotationsAndStdDevs();
-    
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////    
-    //                                                 ROTATIONS
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    double meanTranslationInducedRotation = mappingMatrix.ComputeMeanTranslationInducedRotation();
-    std::cout << "Mean translation induced rotation: " << meanTranslationInducedRotation << std::endl;
-    std::vector<double> initialRotationAngles = mappingMatrix.GetInitialRotationAngles();
-    std::vector<double> correctedAngles = Referee::Probability::Compute1DGradienDescent(meansAndStdDevs, initialRotationAngles, 0.00001, 10000, 0.000001);
-    for(int i = 0; i < initialRotationAngles.size(); i++)
+    std::vector<std::pair<long unsigned int, long unsigned int>> minimumSpanningTree = graph.ComputeMinimumSpanningTree(initialTranslationVectors[std::get<0>(mostProbableRotation)]);
+    std::cout << "Minimum spanning tree edges:" << std::endl;
+    for (const auto& edge : minimumSpanningTree)
     {
-        std::cout << "Initial angle to be applied to point cloud " << i << ": " << initialRotationAngles[i] << std::endl;
-        std::cout << "Corrected angle to be applied to point cloud " << i << ": " << correctedAngles[i] << std::endl;
+        std::cout << "Edge: " << edge.first << " - " << edge.second << std::endl;
     }
 
-    Referee::Utils::IO::SaveRotationAnglesAndStdDevs("rotation_angles_and_std_devs.txt", meansAndStdDevs, correctedAngles);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                               TRANSLATION
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    // std::pair<int, double> mostProbableTranslation = mappingMatrix.GetMostProbableTranslation();
-    int mostProbableIndex = 0;
-    Eigen::Vector3d mostProbableTranslationVector = mappingMatrix.GetMeanTranslationVector(0);
-
-    for (int i = 1; i < mappingMatrix.GetConnectivityMatrix().size(); i++)
-    {
-        Eigen::Vector3d translation = mappingMatrix.GetMeanTranslationVector(i);
-        if (translation.norm() < mostProbableTranslationVector.norm())
-        {
-            mostProbableIndex = i;
-            mostProbableTranslationVector = translation;
-        }
-    }
-
-    mappingMatrix.ComputeTranslationCoefficients(mostProbableIndex);
-    std::vector<std::vector<std::pair<double, Eigen::Vector3d>>> translationFactorsWithRest(numberFiles, std::vector<std::pair<double, Eigen::Vector3d>>(numberFiles, std::make_pair(0.0, Eigen::Vector3d::Zero())));
-    Eigen::Vector3d meanTranslationVector = mappingMatrix.GetMeanTranslationVector(mostProbableIndex);
-
-    std::vector<Eigen::Vector3d> finalTranslationVectorsPerPc(numberFiles, Eigen::Vector3d::Zero());
-    std::vector<Eigen::Matrix4d> finalTransformations;
-    std::vector<std::pair<Eigen::Vector3d, Eigen::Matrix4d>> originsAndTransformations;
-    std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> originsAndTranslations;
-
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> pointClouds(numberFiles);
     for(int i = 0; i < numberFiles; i++)
     {
-        finalTranslationVectorsPerPc[i] = (mappingMatrix.GetTransformation(i, mostProbableIndex).GetTranslation()) * mappingMatrix.GetTranslationFactorWithRest(i, mostProbableIndex).first + mappingMatrix.GetTranslationFactorWithRest(i, mostProbableIndex).second;        
-        std::cout << "Final translation vector for point cloud " << i << ": " << finalTranslationVectorsPerPc[i].transpose() << std::endl;
-        Eigen::Matrix4d transform = Eigen::Matrix4d::Identity();
-        Eigen::Matrix3d rotationMatrix = Eigen::AngleAxis<double>(correctedAngles[i], Eigen::Vector3d(0, 0, 1)).toRotationMatrix();
-        transform.block<3, 3>(0, 0) = rotationMatrix;
-        transform.block<3, 1>(0, 3) = /*initialTranslationVectors[i] + */finalTranslationVectorsPerPc[i];
-        finalTransformations.push_back(transform);
-        Eigen::Vector3d initialTranslationVector = initialTranslationVectors[i];
-        Eigen::Matrix4d transformation = finalTransformations[i];
-        originsAndTransformations.push_back(std::make_pair(initialTranslationVector, transformation));
-        originsAndTranslations.push_back(std::make_pair(initialTranslationVector, transformation.block<3, 1>(0, 3)));
+        pointClouds[i] = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>);
+        pcl::io::loadPLYFile(plyFileNames[i], *pointClouds[i]);
+        Referee::Transformations::TranslatePointCloud<pcl::PointXYZRGB>(pointClouds[i], initialTranslationVectors[i]);
+        Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointXYZRGB>(pointClouds[i], 0.15);
     }
-    double finalAngle = Referee::Transformations::CalculateResultingRotationAngle(originsAndTranslations);
-    
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //                                               OUTPUTS
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    for(int i = 0; i < numberFiles; i++)
+    for(int i = minimumSpanningTree.size() - 1; i >= 0; i--)
     {
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        pcl::io::loadPLYFile(plyFileNames[i], *coloredPointCloud);
-        Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointXYZRGB>(coloredPointCloud, 0.03);
-        for(int j = 0; j < coloredPointCloud->size(); j++)
+        std::pair<int, int> edge = minimumSpanningTree[i];
+        Eigen::Matrix4d transformation = mappingMatrix.GetTransformation(edge.second, edge.first).GetTransformationMatrix();
+        // Align the second to the first and merge the point clouds
+        Referee::Transformations::TransformPointCloud<pcl::PointXYZRGB>(pointClouds[edge.second], transformation);
+        for (int j = 0; j < pointClouds[edge.second]->size(); j++)
         {
-            coloredPointCloud->points[j].r = 100 + i*45;
-            coloredPointCloud->points[j].g = 100 ;
-            coloredPointCloud->points[j].b = 250 - i*45;
+            pointClouds[edge.second]->points[j].r = 50 + (double)200 * ((double)i/(double)(numberFiles-1));
+            pointClouds[edge.second]->points[j].g = 0;
+            pointClouds[edge.second]->points[j].b = 250 - (double)200 * ((double)i/(double)(numberFiles-1));
         }
-        Referee::Transformations::TranslatePointCloud<pcl::PointXYZRGB>(coloredPointCloud, initialTranslationVectors[i]);
-        Referee::Transformations::TransformPointCloud<pcl::PointXYZRGB>(coloredPointCloud, finalTransformations[i]);
-        *coloredFinalPointCloud += *coloredPointCloud;
+        *pointClouds[edge.first] += *pointClouds[edge.second];
     }
 
-    Eigen::Matrix4d finalRotation = Eigen::Matrix4d::Identity();
-    finalRotation.block<3, 3>(0, 0) = Eigen::AngleAxisd(-finalAngle, Eigen::Vector3d(0, 0, 1)).toRotationMatrix();
-    Referee::Transformations::TransformPointCloud<pcl::PointXYZRGB>(coloredFinalPointCloud, finalRotation);
-
-    // rasterize
-    Referee::Raster::Rasterizer rasterizer;
-    rasterizer.CreateGeoTIFFDEMFromPointCloud(coloredFinalPointCloud, "output.tif", 1.0, coordSys);
-    Referee::FileBasedVisualisation::Visualisation visualisation;
-    visualisation.VisualiseTransformations(originsAndTransformations, coloredFinalPointCloud);
-    pcl::io::savePLYFile("coloredFinalPointCloud.ply", *coloredFinalPointCloud);
+    pcl::io::savePLYFile("coloredFinalPointCloud.ply", *pointClouds[std::get<0>(mostProbableRotation)]);
     return 0;
 }
