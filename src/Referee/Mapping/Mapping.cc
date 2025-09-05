@@ -459,13 +459,13 @@ namespace Referee::Mapping
 
     Graph* Graph::__instance = nullptr;
 
-    void CreateConnectivityMatrix(std::vector<Eigen::Vector3d> geolocations, int knn, double maxDistance, std::vector<std::vector<int>>& matrix)
+    std::vector<std::vector<int>> CreateConnectivityMatrix(std::vector<Eigen::Vector3d> geolocations, int knn, double maxDistance)
     {
         std::vector<std::vector<std::pair<int, double>>> distancesToOtherPcs;
         std::vector<std::vector<int>> totalMatrix;
         distancesToOtherPcs.resize(geolocations.size());
         totalMatrix.resize(geolocations.size());
-        matrix.resize(geolocations.size());
+        std::vector<std::vector<int>> matrix(geolocations.size());
 
         for(int i = 0; i < geolocations.size(); i++)
         {
@@ -488,23 +488,27 @@ namespace Referee::Mapping
         {
             std::vector<int> neighbors = totalMatrix[i];
             // Sort distancesToOtherPcs[i] based on the distance
-            std::sort(distancesToOtherPcs[i].begin(), distancesToOtherPcs[i].end(), [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
+            std::sort(distancesToOtherPcs[i].begin(), distancesToOtherPcs[i].end(), [](const std::pair<int, double>& a, const std::pair<int, double>& b) 
+            {
                 return a.second < b.second;
             });
 
             // Select the k nearest neighbors
             matrix[i].resize(std::min(knn, static_cast<int>(distancesToOtherPcs[i].size())));
-            for (int j = 0; j < matrix[i].size(); j++) {
+            for (int j = 0; j < matrix[i].size(); j++)
+            {
                 matrix[i][j] = distancesToOtherPcs[i][j].first; // Extract the index of the neighbor
             }
 
             // Debugging output
             std::cout << "Neighbors for " << i << ": ";
-            for (int j = 0; j < matrix[i].size(); j++) {
+            for (int j = 0; j < matrix[i].size(); j++) 
+            {
                 std::cout << matrix[i][j] << " ";
             }
             std::cout << std::endl;
         }
+        return matrix;
     }
 
     Eigen::Matrix4d ComputePairwiseTransformation(pcl::PointCloud<pcl::PointNormal>::Ptr source, pcl::PointCloud<pcl::PointNormal>::Ptr target, TransformationComputationMethod method)
@@ -540,7 +544,6 @@ namespace Referee::Mapping
             globalMatchMapping.extract(sourcePosCloud);
             globalMatchMapping.setInputCloud(targetNoNormals->makeShared());
             globalMatchMapping.extract(targetPosCloud);
-            
             GlobalMatch::Matching::Matching globalMatchMatching;
             globalMatchMatching.setPairwiseStemPositions(sourcePosCloud, targetPosCloud);
             globalMatchMatching.estimateTransformation(transformation);
