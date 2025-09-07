@@ -180,4 +180,21 @@ namespace Referee::Utils
             }
         }
     }
+
+    namespace Trigonometry
+    {
+        std::vector<double> SolveAlKashi(Eigen::Vector3d sideA, Eigen::Vector3d sideB, Eigen::Vector3d sideC)
+        {
+            double a = sideA.norm();
+            double b = sideB.norm();
+            double c = sideC.norm();
+
+            double angleA = std::acos((b*b + c*c - a*a) / (2 * b * c));
+            double angleB = std::acos((a*a + c*c - b*b) / (2 * a * c));
+            double angleC = std::acos((a*a + b*b - c*c) / (2 * a * b));
+
+            return {angleA, angleB, angleC};
+        }
+    } // namespace Trigonometry
+    
 }

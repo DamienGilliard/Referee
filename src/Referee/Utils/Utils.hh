@@ -181,5 +181,18 @@ namespace Referee
              */
             void SaveRotationAnglesAndStdDevs(const std::string& fileName, const std::vector<std::pair<double, double>>& meansAndStdDevs, const std::vector<double>& correctedAngles);
         }
+
+        namespace Trigonometry
+        {
+            /**
+             * @brief Solve a triangle using the Al-Kashi theorem (law of cosines)
+             * 
+             * @param sideA Length of side A
+             * @param sideB Length of side B
+             * @param sideC Length of side C
+             * @return std::vector<double> Vector containing the angles opposite to sides A, B, and C (in radians)
+             */
+            std::vector<double> SolveAlKashi(Eigen::Vector3d sideA, Eigen::Vector3d sideB, Eigen::Vector3d sideC);
+        }
     } // Utils
 }
