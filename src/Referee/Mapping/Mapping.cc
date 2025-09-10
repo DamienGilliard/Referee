@@ -13,6 +13,7 @@ namespace Referee::Mapping
         __globalTranslation = transformationMatrixInGlobalCoordinateSystem.block<3, 1>(0, 3);
     }
 
+
     void Transformation::PrintTransformation()
     {
         std::cout << "Rotation vector: " << __globalRotationVector.transpose() << std::endl;
@@ -181,6 +182,7 @@ namespace Referee::Mapping
         std::cout << std::endl;
     }
 
+
     void MappingMatrix::CalculateMeanTransformationMatrices()
     {
         // std::vector<double> stdDevRotations;
@@ -245,6 +247,7 @@ namespace Referee::Mapping
         }
     }
 
+
     std::tuple<int, double> MappingMatrix::GetMostProbableRotation()
     {
         int mostProbableIndex = 0;
@@ -289,6 +292,7 @@ namespace Referee::Mapping
         return std::make_pair(mostProbableIndex, maxProbability);
     }
 
+
     std::vector<std::pair<double, double>> MappingMatrix::GetMeanRotationsAndStdDevs()
     {
         std::vector<std::pair<double, double>> meanRotationsAndStdDevs;
@@ -297,6 +301,7 @@ namespace Referee::Mapping
             meanRotationsAndStdDevs.push_back(std::make_pair(this->__meanTransformations[i].GetRotationAngle(), this->__stdDevRotations[i]));
         }
         return meanRotationsAndStdDevs;
+
     }
 
     std::vector<std::pair<double, Eigen::Vector3d>> MappingMatrix::GetMeanTranslationVectorsAndStdDevs()
@@ -308,6 +313,8 @@ namespace Referee::Mapping
             double stdDev = this->__stdDevRotations[i]; // Assuming stdDev is the same for all components of the translation vector
             meanTranslationVectorsAndStdDevs.push_back(std::make_pair(translation.norm(), translation));
         }
+
+
         return meanTranslationVectorsAndStdDevs;
     }
 
@@ -337,6 +344,7 @@ namespace Referee::Mapping
             }
         }
         meanTranslationInducedRotation /= count;
+
         return meanTranslationInducedRotation;
     }
     
@@ -394,6 +402,7 @@ namespace Referee::Mapping
                 // if the connectivity is not reciprocal, we set the rotation coefficient to 0
                 if (j != matchedIndex)
                 {
+
                     rotationCoefficients(i, j) = rotationAngle / this->__mappingMatrix[i][j].GetRotationAngle();
                 }
             }
@@ -420,6 +429,7 @@ namespace Referee::Mapping
                         {
                             rotationCoefficients(i, j) = 1 - alpha;
                             matchedIndex = j;
+
                             rotationAngle = this->__mappingMatrix[i][j].GetRotationAngle() * rotationCoefficients(i, j);
                         } 
                     }
@@ -441,6 +451,7 @@ namespace Referee::Mapping
         {
             for(int j = 0; j < rotationCoefficients.cols(); j++)
             {
+
                 std::cout << rotationCoefficients(i, j) << " ";
             }
             std::cout << std::endl;
@@ -595,6 +606,7 @@ namespace Referee::Mapping
         if(type == GraphType::Undirected)
         {
             this->__undirectedGraph = graaf::undirected_graph<int, double>();
+
         }
         else
         {
@@ -650,6 +662,7 @@ namespace Referee::Mapping
             std::cout << "Neighbors for " << i << ": ";
             for (int j = 0; j < matrix[i].size(); j++) 
             {
+
                 std::cout << matrix[i][j] << " ";
             }
             std::cout << std::endl;
@@ -704,6 +717,7 @@ namespace Referee::Mapping
         for(int i = 0; i < 4; i++)
         {
             for(int j = 0; j < 4; j++)
+
             {
                 transformationDouble(i, j) = transformation(i, j);
             }
@@ -736,6 +750,7 @@ namespace Referee::Mapping
                 {
                     transformation(i, j) = transformationf(i, j);
                 }
+
             }
         }
         else

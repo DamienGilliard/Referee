@@ -75,6 +75,8 @@ namespace Referee::Mapping
                 if(!__instance){__instance = new GlobalCoordinateSystem();}
                 return *__instance;
             }
+
+
             static GlobalCoordinateSystem& CreateGlobalCoordinateSystem(CoordinateSystemType type = CoordinateSystemType::WGS84,
                                                                        Eigen::Vector3d origin = Eigen::Vector3d::Zero(),
                                                                        Eigen::Quaterniond orientation = Eigen::Quaterniond::Identity())
@@ -82,28 +84,41 @@ namespace Referee::Mapping
                 if(!__instance){__instance = new GlobalCoordinateSystem(type, origin, orientation);}
                 return *__instance;
             }
+                                                                       Eigen::Quaterniond orientation = Eigen::Quaterniond::Identity())
         private:
             GlobalCoordinateSystem(CoordinateSystemType type = CoordinateSystemType::WGS84,
                                    Eigen::Vector3d origin = Eigen::Vector3d::Zero(),
                                    Eigen::Quaterniond orientation = Eigen::Quaterniond::Identity())
                 : __type(type), __origin(origin), __orientation(orientation) {}
+
+                                   Eigen::Vector3d origin = Eigen::Vector3d::Zero(),
             GlobalCoordinateSystem(const GlobalCoordinateSystem&) = delete; // prevent copying
+
+
             GlobalCoordinateSystem& operator=(const GlobalCoordinateSystem&) = delete; // prevent assignment
+
             GlobalCoordinateSystem(GlobalCoordinateSystem&&) = delete; // prevent moving
+
             GlobalCoordinateSystem& operator=(GlobalCoordinateSystem&&) = delete; // prevent moving
+            
             ~GlobalCoordinateSystem() = default; // destructor
+
             /**
              * @brief Type of the global coordinate system
+
              */
+
             CoordinateSystemType __type = CoordinateSystemType::WGS84; // type of the global coordinate system
             /**
              * @brief Origin of the global coordinate system
              */
             Eigen::Vector3d __origin = Eigen::Vector3d::Zero(); // origin of the global coordinate system
+
             /**
              * @brief Orientation of the global coordinate system
              */
             Eigen::Quaterniond __orientation = Eigen::Quaterniond::Identity(); // orientation of the global coordinate system
+
             /**
              * @brief Static instance of the global coordinate system
              * 
@@ -111,6 +126,8 @@ namespace Referee::Mapping
              */
             static GlobalCoordinateSystem* __instance; // static instance of the class
     };
+
+
     /**
      * @brief Thic class stores a transformation in 3D in the form of a rotation axis, a point on this axis, a rotation along this axis, and a translation along this axis.
      * 
@@ -133,6 +150,7 @@ namespace Referee::Mapping
              */
             void PrintTransformation();
 
+            
             // Eigen::Vector3d GetRotationAxis() const { return __rotationAxis; }
             // Eigen::Vector3d GetPointOnAxis() const { return __pointOnAxis; }
             double GetRotationAngle() const 
@@ -150,11 +168,17 @@ namespace Referee::Mapping
             Eigen::Vector3d GetTranslation() const { return __globalTranslation; }
         
         private:
+            
             Eigen::Vector3d __globalRotationVector; // rotation axis expressed in the global coordinate system, the norm of this vector is the rotation angle in radians
+           
             Eigen::Vector3d __globalTranslation; // translation vector expressed in the global coordinate system
+
             Eigen::Matrix4d __globalTransformation; // transformation matrix in the global coordinate system
+
             Eigen::Quaterniond __quaternion; // quaternion representing the rotation
+
             std::shared_ptr<Scan> __fromScan = nullptr; // pointer to the scan from which the transformation is computed
+
             std::shared_ptr<Scan> __toScan = nullptr; // pointer to the scan to which the transformation is computed
     };
 
@@ -174,6 +198,7 @@ namespace Referee::Mapping
              */
             static Graph& CreateUndirectedGraph();
 
+
             /**
              * @brief Create a new undirected graph singleton instance with given vertices and edges
              * @param vertices List of vertices to add to the graph
@@ -182,17 +207,20 @@ namespace Referee::Mapping
              */
             static Graph& CreateUndirectedGraph(std::vector<Eigen::Vector3d> vertices, std::vector<std::vector<int>> edges);
 
+
             /**
              * @brief Get the instance of the undirected graph
              * @return Graph instance
              */
             static Graph& GetInstanceOfUndirectedGraph();
 
+
             /**
              * @brief Add a vertex to the graph
              * @param vertex The vertex to add
              */
             void AddVertex(Eigen::Vector3d vertex);
+
 
             /**
              * @brief Add an edge to the graph
@@ -203,16 +231,20 @@ namespace Referee::Mapping
             void AddEdge(Eigen::Vector3d vertex1, 
                          Eigen::Vector3d vertex2, 
                          double weight);
+
+
             /**
              * @brief Compute the minimum spanning tree of the graph using Prim's algorithm
              * @return A vector of vertices in the minimum spanning tree
              */
             std::vector<std::pair<long unsigned int, long unsigned int>> ComputeMinimumSpanningTree(Eigen::Vector3d startVertex);
 
+
             /**
              * @brief Print the graph to the console
              */
             void PrintGraph();
+
 
             /**
              * @brief Extract a sub-tree from the graph. All vertices and edges between the starting vertex and the leaves are included in the sub-tree.
@@ -222,6 +254,7 @@ namespace Referee::Mapping
             Graph extractSubTree(int startingVertexIndex);
 
         private:
+
             Graph(GraphType type);
 
             std::unordered_map<Eigen::Vector3d, int> __vertexIndices; // Map to store the positions to their indices.
@@ -235,7 +268,7 @@ namespace Referee::Mapping
             graaf::undirected_graph<int, double> __undirectedGraph; // Undirected graph to store the connectivity between the point clouds
     };
 
-    
+
     /**
      * @brief MappingMatrix class to store the N x N mapping matrix `M` between N point clouds, where each element M_{i,j} is the 4x4 transformation matrix between point cloud i and point cloud j
      */
@@ -262,6 +295,7 @@ namespace Referee::Mapping
                     }
                 }
             }
+
 
             void SetConnectivityMatrix(std::vector<std::vector<int>> connectivityMatrix)
             {
@@ -293,6 +327,7 @@ namespace Referee::Mapping
                 return __mappingMatrix[i][j];
             }
 
+
             /**
              * @brief Getter for the standard deviation of the rotation angles of the transformation matrices
              * @param i Index of the point cloud
@@ -300,6 +335,7 @@ namespace Referee::Mapping
              */
             double GetStdDevRotation(int i){return __stdDevRotations[i];}
 
+            
             /**
              * @brief Getter for the mean rotation angle of the transformation matrices
              * @param i Index of the point cloud
@@ -307,12 +343,14 @@ namespace Referee::Mapping
              */
             double GetMeanRotation(int i){return __meanTransformations[i].GetRotationAngle();}
 
+
             /**
              * @brief Getter for the mean translation vector of the transformation matrices
              * @param i Index of the point cloud
              * @return Mean translation vector of the transformation matrices
              */
             Eigen::Vector3d GetMeanTranslationVector(int i){return __meanTranslationVectors[i];}
+
 
             /**
              * @brief Setter for the transformation matrix between two point clouds
@@ -325,10 +363,12 @@ namespace Referee::Mapping
                 __mappingMatrix[i][j] = transformation;
             }
 
+
             /**
              * @brief Calculate the mean transformation matrix per point cloud (i.e. the mean transformation matrix along one row of the mapping matrix)
              */
             void CalculateMeanTransformationMatrices();
+
 
             /**
              * @brief Getter for the mean transformation matrix of a point cloud
@@ -336,6 +376,7 @@ namespace Referee::Mapping
              * @return Mean transformation matrix of the point cloud
              */
             Referee::Mapping::Transformation GetMeanTransformation(int i){return __meanTransformations[i];}
+
 
             /**
              * @brief Computes the most probable mean rotation angle throughout the point clouds
@@ -349,11 +390,13 @@ namespace Referee::Mapping
              */
             std::pair<int, double> GetMostProbableTranslation();
 
+
             /**
              * @brief for each point cloud, get the mean rotations and standard deviations of the rotation angles of the transformation matrices
              * @return A vector of pairs, where each pair contains the mean rotation angle and the standard deviation of the rotation angle for each point cloud
              */
             std::vector<std::pair<double, double>> GetMeanRotationsAndStdDevs();
+
 
             /**
              * @brief Compute the mean translation vectors for each point cloud
@@ -361,11 +404,13 @@ namespace Referee::Mapping
              */
             std::vector<std::pair<double, Eigen::Vector3d>> GetMeanTranslationVectorsAndStdDevs();
 
+
             /**
              * @brief Compute the mean pose rotation error by computing the mean translation induced rotation
              * @return Mean translation induced rotation
              */
             double ComputeMeanTranslationInducedRotation();
+
 
             /**
              * @brief Compute the rotation coefficients between the point clouds
@@ -374,11 +419,13 @@ namespace Referee::Mapping
              */
             void ComputeRotationCoefficients(int mostTrustworthyPointCloudIndex);
 
+
             /**
              * @brief Compute the translation coefficients between the point clouds
              * @param mostTrustworthyPointCloudIndex The index of the most trustworthy point cloud
              */
             void ComputeTranslationCoefficients(int mostTrustworthyPointCloudIndex);
+
 
             /**
              * @brief Getter for the rotation coefficient
@@ -396,6 +443,8 @@ namespace Referee::Mapping
             {
                 return __translationFactorsWithRests[i][j];
             }
+
+
             /**
              * @brief Getter for the rotation angles from the rotation coefficients 
              * @return A vector of the initial rotation angles
@@ -406,6 +455,7 @@ namespace Referee::Mapping
              */
             void PrintMatrix();
 
+            
             /**
              * @brief Print the mean transformation matrices to the console
              */
@@ -553,6 +603,7 @@ namespace Referee::Mapping
         GlobalMatch,
     };
 
+    
     /**
      * @brief enum to store the different refinement methods. Currently only ICP with normals is supported: https://doi.org/10.1109/ICRA40945.2019.8793880
     */
