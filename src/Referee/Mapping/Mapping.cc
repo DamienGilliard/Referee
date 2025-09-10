@@ -20,6 +20,152 @@ namespace Referee::Mapping
         std::cout << "Translation: " << __globalTranslation.transpose() << std::endl;
     }
 
+
+    Graph& Graph::CreateUndirectedGraph()
+    {
+        if(!Graph::__instance)
+        {
+            Graph::__instance = new Graph(GraphType::Undirected);
+        }
+        return *Graph::__instance;
+    }
+
+
+    Graph& Graph::CreateUndirectedGraph(std::vector<Eigen::Vector3d> vertices, 
+                                        std::vector<std::vector<int>> edges)
+    {
+        Graph& graph = Graph::CreateUndirectedGraph();
+        for(const auto& vertex : vertices)
+        {
+            graph.AddVertex(vertex);
+        }
+        for(int i = 0; i < edges.size(); i++)
+        {
+            for(int j = 0; j < edges[i].size(); j++)
+            {
+                if(i != edges[i][j]) // avoid self-loops
+                {
+                    graph.AddEdge(vertices[i], vertices[edges[i][j]], (vertices[i] - vertices[edges[i][j]]).norm());
+                }
+            }
+        }
+        return graph;
+    }
+
+
+    Graph& Graph::GetInstanceOfUndirectedGraph()
+    {
+        if(!Graph::__instance)
+        {
+            Graph::__instance = &CreateUndirectedGraph();
+        }
+        if(Graph::__instance->__isDirected)
+        {
+            std::cerr << "Error: Trying to get an undirected graph instance, but the instance is directed." << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        return *Graph::__instance;
+    }
+
+
+    void Graph::AddVertex(Eigen::Vector3d vertex)
+    {
+        int index = this->__nVertices;
+        this->__vertexIndices[vertex] = index;
+        this->__nVertices++;
+        __undirectedGraph.add_vertex(index);
+    }
+
+
+    void Graph::AddEdge(Eigen::Vector3d vertex1, 
+                        Eigen::Vector3d vertex2, 
+                        double distance)
+    {
+        int index1 = this->__vertexIndices[vertex1];
+        int index2 = this->__vertexIndices[vertex2];
+        __undirectedGraph.add_edge(index1, index2, distance);
+    }
+
+
+    std::vector<std::pair<long unsigned int, long unsigned int>> Graph::ComputeMinimumSpanningTree(Eigen::Vector3d rootVertex)
+    {
+        int rootVertexIndex = this->__vertexIndices[rootVertex];
+        if(!__undirectedGraph.has_vertex(rootVertexIndex))
+        {
+            std::cerr << "Error: Root vertex is not part of the graph." << std::endl;
+            exit(EXIT_FAILURE);
+        }
+
+        auto mstEdgesOpt = graaf::algorithm::prim_minimum_spanning_tree(this->__undirectedGraph, rootVertexIndex);
+        if (!mstEdgesOpt) 
+        {
+            std::cerr << "Error: Could not compute minimum spanning tree." << std::endl;
+            return {};
+        }
+        std::vector<std::pair<long unsigned int, long unsigned int>> mstEdges = mstEdgesOpt.value();
+        return mstEdges;
+    }
+
+
+    void Graph::PrintGraph()
+    {
+        graaf::io::to_dot(this->__undirectedGraph, "./graph.dot");
+        std::cout << "Graph has been written to graph.dot" << std::endl;
+    }
+    
+
+    Graph::Graph(GraphType type): __isDirected(type == GraphType::Directed)
+    {
+        if(type == GraphType::Undirected)
+        {
+            this->__undirectedGraph = graaf::undirected_graph<int, double>();
+        }
+        else
+        {
+            std::cerr << "Error: Unsupported graph type." << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+
+
+    Graph* Graph::__instance = nullptr;
+
+
+    Graph Graph::extractSubTree(int startingVertexIndex)
+    {
+        graaf::undirected_graph<int, double> subtree;
+        std::unordered_set<int> visited;
+        std::queue<int> q;
+
+        q.push(startingVertexIndex);
+        visited.insert(startingVertexIndex);
+        subtree.add_vertex(startingVertexIndex);
+
+        while (!q.empty()) {
+            auto v = q.front();
+            q.pop();
+
+            for (auto neighbor : this->__undirectedGraph.get_neighbors(v)) {
+                if (visited.count(neighbor) == 0) {
+                    visited.insert(neighbor);
+                    q.push(neighbor);
+                    subtree.add_vertex(neighbor);
+                    auto edge_id_opt = this->__undirectedGraph.get_edge(v, neighbor);
+                    if (edge_id_opt) 
+                    {
+                        auto weight = this->__undirectedGraph.get_edge(v, neighbor);
+                        subtree.add_edge(v, neighbor, weight);
+                    }
+                }
+            }
+        }
+
+        Graph subtreeGraph = Graph(GraphType::Undirected);
+        subtreeGraph.__undirectedGraph = subtree;
+        return subtreeGraph;
+    }
+
+
     void MappingMatrix::PrintMatrix()
     {
         for(int i = 0; i < __mappingMatrix.size(); i++)
