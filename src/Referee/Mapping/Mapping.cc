@@ -88,9 +88,8 @@ namespace Referee::Mapping
     }
 
 
-    std::vector<std::pair<long unsigned int, long unsigned int>> Graph::ComputeMinimumSpanningTree(Eigen::Vector3d rootVertex)
+    std::vector<std::pair<long unsigned int, long unsigned int>> Graph::ComputeMinimumSpanningTree(int rootVertexIndex)
     {
-        int rootVertexIndex = this->__vertexIndices[rootVertex];
         if(!__undirectedGraph.has_vertex(rootVertexIndex))
         {
             std::cerr << "Error: Root vertex is not part of the graph." << std::endl;
@@ -113,7 +112,41 @@ namespace Referee::Mapping
         graaf::io::to_dot(this->__undirectedGraph, "./graph.dot");
         std::cout << "Graph has been written to graph.dot" << std::endl;
     }
-    
+
+
+    std::vector<int> Graph::extractMSTSubTree(int startingVertexIndex)
+    {
+        graaf::undirected_graph<int, double> MSTGraph;
+        for (const auto& edge : this->__minimumSpanningTree) 
+        {
+            double weight = this->__undirectedGraph.get_edge(edge.first, edge.second);
+            MSTGraph.add_edge(edge.first, edge.second, weight);
+        }
+
+        std::vector<int> subtree;
+        std::unordered_set<int> visited;
+        std::queue<int> q;
+
+        q.push(startingVertexIndex);
+        visited.insert(startingVertexIndex);
+        subtree.push_back(startingVertexIndex);
+
+        while (!q.empty()) {
+            auto v = q.front();
+            q.pop();
+
+            for (auto neighbor : MSTGraph.get_neighbors(v)) {
+                if (visited.count(neighbor) == 0) 
+                {
+                    visited.insert(neighbor);
+                    q.push(neighbor);
+                    subtree.push_back(neighbor);
+                }
+            }
+        }
+        return subtree;
+    }
+
 
     Graph::Graph(GraphType type): __isDirected(type == GraphType::Directed)
     {
@@ -130,41 +163,6 @@ namespace Referee::Mapping
 
 
     Graph* Graph::__instance = nullptr;
-
-
-    Graph Graph::extractSubTree(int startingVertexIndex)
-    {
-        graaf::undirected_graph<int, double> subtree;
-        std::unordered_set<int> visited;
-        std::queue<int> q;
-
-        q.push(startingVertexIndex);
-        visited.insert(startingVertexIndex);
-        subtree.add_vertex(startingVertexIndex);
-
-        while (!q.empty()) {
-            auto v = q.front();
-            q.pop();
-
-            for (auto neighbor : this->__undirectedGraph.get_neighbors(v)) {
-                if (visited.count(neighbor) == 0) {
-                    visited.insert(neighbor);
-                    q.push(neighbor);
-                    subtree.add_vertex(neighbor);
-                    auto edge_id_opt = this->__undirectedGraph.get_edge(v, neighbor);
-                    if (edge_id_opt) 
-                    {
-                        auto weight = this->__undirectedGraph.get_edge(v, neighbor);
-                        subtree.add_edge(v, neighbor, weight);
-                    }
-                }
-            }
-        }
-
-        Graph subtreeGraph = Graph(GraphType::Undirected);
-        subtreeGraph.__undirectedGraph = subtree;
-        return subtreeGraph;
-    }
 
 
     void MappingMatrix::PrintMatrix()

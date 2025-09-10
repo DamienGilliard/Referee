@@ -235,9 +235,10 @@ namespace Referee::Mapping
 
             /**
              * @brief Compute the minimum spanning tree of the graph using Prim's algorithm
+             * @param startVertexIndex The index of the root vertex for the algorithm
              * @return A vector of vertices in the minimum spanning tree
              */
-            std::vector<std::pair<long unsigned int, long unsigned int>> ComputeMinimumSpanningTree(Eigen::Vector3d startVertex);
+            std::vector<std::pair<long unsigned int, long unsigned int>> ComputeMinimumSpanningTree(int startVertexIndex);
 
 
             /**
@@ -247,11 +248,11 @@ namespace Referee::Mapping
 
 
             /**
-             * @brief Extract a sub-tree from the graph. All vertices and edges between the starting vertex and the leaves are included in the sub-tree.
+             * @brief Extract a sub-tree from the graph's minimum spanning tree (computed earlier) and return its vertices. All vertices between the starting vertex and the leaves are included in the sub-tree.
              * @param startingVertexIndex The index of the starting vertex for the sub-tree
-             * @return A new graph representing the sub-tree
+             * @return A vector containing the sub-tree's vertices
              */
-            Graph extractSubTree(int startingVertexIndex);
+            std::vector<int> extractMSTSubTree(int startingVertexIndex);
 
         private:
 
@@ -266,6 +267,8 @@ namespace Referee::Mapping
             const bool __isDirected;
 
             graaf::undirected_graph<int, double> __undirectedGraph; // Undirected graph to store the connectivity between the point clouds
+
+            std::vector<std::pair<long unsigned int, long unsigned int>> __minimumSpanningTree; // Minimum spanning tree of the graph, stored as a vector of edges (pairs of vertex indices)
     };
 
 
