@@ -234,6 +234,19 @@ namespace Referee::Mapping
 
 
             /**
+             * @brief Get the vertex count of the graph
+             * @return Number of vertices in the graph
+             */
+            int GetVertexCount() const { return this->__nVertices; }
+
+
+            /**
+             * @brief Get the edge count of the graph
+             * @return Number of edges in the graph
+             */
+            int GetEdgeCount() const { return this->_nEdges; }
+
+            /**
              * @brief Compute the minimum spanning tree of the graph using Prim's algorithm
              * @param startVertexIndex The index of the root vertex for the algorithm
              * @return A vector of vertices in the minimum spanning tree
@@ -270,7 +283,9 @@ namespace Referee::Mapping
 
             static Graph* __instance;
 
-            int __nVertices = 0; // Number of vertices in the graph
+            int __nVertices = 0; 
+
+            int _nEdges = 0;
 
             const bool __isDirected;
 
