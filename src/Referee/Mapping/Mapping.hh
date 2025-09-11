@@ -356,12 +356,10 @@ namespace Referee::Mapping
 
 
             /**
-             * @brief Setter for the transformation matrix between two point clouds
-             * @param i Index of the first point cloud
-             * @param j Index of the second point cloud
-             * @param transformation Transformation matrix between the two point clouds
+             * @brief Getter for the minimum spanning tree of the graph
+             * @return Minimum spanning tree of the graph as a vector of edges (pairs of vertex indices)
              */
-            void SetTransformation(int i, int j, Referee::Mapping::Transformation transformation)
+            std::vector<std::pair<long unsigned int, long unsigned int>> GetMinimumSpanningTree()
             {
                 __mappingMatrix[i][j] = transformation;
             }
