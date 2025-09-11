@@ -129,8 +129,63 @@ namespace Referee::Mapping
 
 
     /**
-     * @brief Thic class stores a transformation in 3D in the form of a rotation axis, a point on this axis, a rotation along this axis, and a translation along this axis.
-     * 
+     * @brief Scan class to store a point cloud, its associated pose, and a few useful attributes
+     */
+    class Scan
+    {
+        public:
+
+            Scan() = default;
+            /**
+             * @brief Construct a new Scan object using an initial pose and a point cloud file name to be loaded at construction
+             * @param pose Initial pose of the scan in the global coordinate system
+             * @param cloudFileName File name of the point cloud to be loaded (PLY format)
+             */
+            Scan(Pose pose, std::string cloudFileName) : __pose(pose), 
+                                                         __cloud(new pcl::PointCloud<pcl::PointNormal>), 
+                                                         __cloudFileName(cloudFileName) 
+            {
+                pcl::io::loadPLYFile<pcl::PointNormal>(cloudFileName, *__cloud);
+            }
+
+
+            void TranslateScan(Eigen::Vector3d translation)
+            {
+                __pose.Translate(translation);
+                Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(__cloud, translation);
+            }
+
+
+            /**
+             * @brief Get a pointer to the pose of the scan
+             * @return Pointer to the pose in the global coordinate system
+             */
+            Pose& GetPose() { return __pose; }
+
+
+            /**
+             * @brief Get a pointer to the point cloud of the scan
+             * @return Pointer to the point cloud
+             */
+            pcl::PointCloud<pcl::PointNormal>::Ptr& GetCloud() { return __cloud; }
+
+
+            /**
+             * @brief Get the file name of the point cloud
+             * @return File name of the point cloud
+             */
+            std::string GetCloudFileName() { return __cloudFileName; }
+
+
+        private:
+            Pose __pose;
+            pcl::PointCloud<pcl::PointNormal>::Ptr __cloud;
+            std::string __cloudFileName;
+    };
+
+
+    /**
+     * @brief This class stores a transformation in 3D in the form of a rotation axis, a point on this axis, a rotation along this axis, and a translation along this axis.
      */
     class Transformation
     {
