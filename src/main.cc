@@ -11,26 +11,10 @@ void ComputeTransformationInThread(Eigen::Vector3d initialTranslationSource,
                             double voxelSize,
                             Referee::Mapping::MappingMatrix& mappingMatrix)
 {
-    pcl::PointCloud<pcl::PointNormal>::Ptr sourceCloud(new pcl::PointCloud<pcl::PointNormal>);
-    pcl::PointCloud<pcl::PointNormal>::Ptr targetCloud(new pcl::PointCloud<pcl::PointNormal>);
-    if (pcl::io::loadPLYFile<pcl::PointNormal>(sourcePointCloudFileNames[sourcePointCloudFileIndex], *sourceCloud) == -1)
-    {
-        PCL_ERROR("Couldn't read file %s \n", sourcePointCloudFileNames[sourcePointCloudFileIndex].c_str());
-        return;
-    }
-    if (pcl::io::loadPLYFile<pcl::PointNormal>(sourcePointCloudFileNames[targetPointCloudFileIndex], *targetCloud) == -1)
-    {
-        PCL_ERROR("Couldn't read file %s \n", sourcePointCloudFileNames[targetPointCloudFileIndex].c_str());
-        return;
-    }
+    Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(scans[sourcePointCloudFileIndex].GetCloud(), voxelSize);
+    Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(scans[targetPointCloudFileIndex].GetCloud(), voxelSize);
 
-    Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(targetCloud, voxelSize);
-    Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(sourceCloud, voxelSize);
-
-    Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(sourceCloud, initialTranslationSource);
-    Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(targetCloud, initialTranslationTarget);
-
-    Eigen::Matrix4d transformationMatrix = Referee::Mapping::ComputePairwiseTransformation(sourceCloud, targetCloud, 
+    Eigen::Matrix4d transformationMatrix = Referee::Mapping::ComputePairwiseTransformation(scans[sourcePointCloudFileIndex].GetCloud(), scans[targetPointCloudFileIndex].GetCloud(),
                                                                                       Referee::Mapping::TransformationComputationMethod::GlobalMatch);
 
     Referee::Mapping::Transformation transformation(transformationMatrix);
@@ -54,8 +38,19 @@ int main()
     std::vector<Eigen::Vector3d> initialTranslationVectors = Referee::Utils::FileIterators::GetTranslationVectorsFromFiles(geolocationFiles, coordSys);
     Eigen::Vector3d meanTranslation =Referee::Transformations::RecenterTranslationVectors(initialTranslationVectors);
 
-    std::vector<std::vector<int>> matrix;
-    Referee::Mapping::CreateConnectivityMatrix(initialTranslationVectors, 3, 30, matrix);
+    std::vector<Referee::Mapping::Scan> scans;
+    int nFiles = initialTranslationVectors.size();
+    for (int i = 0; i < nFiles; i++)
+    {
+        Eigen::Quaterniond baseQuaternion = Eigen::Quaterniond::Identity(); // No rotation
+        std::cout << baseQuaternion.coeffs().transpose() << std::endl;
+        Referee::Mapping::Pose pose = Referee::Mapping::Pose(initialTranslationVectors[i], baseQuaternion);
+        Referee::Mapping::Scan scan = Referee::Mapping::Scan(pose, plyFileNames[i]);
+        Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(scan.GetCloud(), initialTranslationVectors[i]);
+        scans.push_back(scan);
+    }
+
+    std::vector<std::vector<int>> matrix = Referee::Mapping::CreateConnectivityMatrix(initialTranslationVectors, 3, 30);
     Referee::Mapping::MappingMatrix mappingMatrix(numberFiles);
     mappingMatrix.SetConnectivityMatrix(matrix);
     mappingMatrix.SetInitialPositions(initialTranslationVectors);
@@ -124,22 +119,27 @@ int main()
         std::cout << "Edge: " << edge.first << " - " << edge.second << std::endl;
     }
 
-    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> pointClouds(numberFiles);
-    for(int i = 0; i < numberFiles; i++)
+    for(int i = mappingMatrix.GetGraph().GetMinimumSpanningTree().size() - 1; i >= 0; i--)
     {
-        pointClouds[i] = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>);
-        pcl::io::loadPLYFile(plyFileNames[i], *pointClouds[i]);
-        Referee::Transformations::TranslatePointCloud<pcl::PointXYZRGB>(pointClouds[i], initialTranslationVectors[i]);
-        Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointXYZRGB>(pointClouds[i], 0.15);
-    }
+        std::pair<int, int> edge = mappingMatrix.GetGraph().GetMinimumSpanningTree()[i];
+        std::vector<int> subTree = mappingMatrix.GetGraph().ExtractMSTSubTree(i);
+        std::cout << "Subtree: ";
+        for (int j = 0; j < subTree.size(); j++)
+        {
+            std::cout << subTree[j] << " ";
+        }
+        Eigen::Matrix4d resetRotations = Eigen::Matrix4d::Identity();
+        resetRotations.block<3,3>(0,0) = Eigen::AngleAxisd(-overallMeanRotation, Eigen::Vector3d::UnitZ()).toRotationMatrix();
+        Eigen::Matrix4d initialTranslation = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d reversedInitialTranslation = Eigen::Matrix4d::Identity();
+        initialTranslation.block<3,1>(0,3) = initialTranslationVectors[edge.first];
+        reversedInitialTranslation.block<3,1>(0,3) = -initialTranslationVectors[edge.first];
 
-    for(int i = minimumSpanningTree.size() - 1; i >= 0; i--)
-    {
-        std::pair<int, int> edge = minimumSpanningTree[i];
-        Eigen::Matrix4d transformation = mappingMatrix.GetTransformation(edge.second, edge.first).GetTransformationMatrix();
-        // Align the second to the first and merge the point clouds
-        Referee::Transformations::TransformPointCloud<pcl::PointXYZRGB>(pointClouds[edge.second], transformation);
-        for (int j = 0; j < pointClouds[edge.second]->size(); j++)
+        Eigen::Matrix4d transformation = initialTranslation * resetRotations * reversedInitialTranslation;
+        Referee::Transformations::TransformPointCloud<pcl::PointNormal>(scans[edge.second].GetCloud(), transformation);
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        pcl::copyPointCloud(*scans[edge.second].GetCloud(), *coloredPointCloud);
+        for (int j = 0; j < coloredPointCloud->size(); j++)
         {
             pointClouds[edge.second]->points[j].r = 50 + (double)200 * ((double)i/(double)(numberFiles-1));
             pointClouds[edge.second]->points[j].g = 0;
