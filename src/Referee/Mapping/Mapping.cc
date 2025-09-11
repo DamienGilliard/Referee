@@ -36,9 +36,11 @@ namespace Referee::Mapping
                                         std::vector<std::vector<int>> edges)
     {
         Graph& graph = Graph::CreateUndirectedGraph();
+        graph.__vertexIndices = std::unordered_map<Eigen::Vector3d, int>(vertices.size());
         for(const auto& vertex : vertices)
         {
             graph.AddVertex(vertex);
+            graph.__vertexIndices[vertex] = graph.__nVertices - 1;
         }
         for(int i = 0; i < edges.size(); i++)
         {
@@ -85,6 +87,7 @@ namespace Referee::Mapping
         int index1 = this->__vertexIndices[vertex1];
         int index2 = this->__vertexIndices[vertex2];
         __undirectedGraph.add_edge(index1, index2, distance);
+        this->_nEdges++;
     }
 
 
@@ -109,43 +112,57 @@ namespace Referee::Mapping
 
     void Graph::PrintGraph()
     {
+        for(const auto& vertex : this->__undirectedGraph.get_vertices())
+        {
+            std::cout << "Vertex " << vertex.first << " connected to: ";
+            for(const auto& neighbor : this->__undirectedGraph.get_neighbors(vertex.first))
+            {
+                std::cout << neighbor << " (weight: " << this->__undirectedGraph.get_edge(vertex.first, neighbor) << "), ";
+            }
+            std::cout << std::endl;
+        }
         graaf::io::to_dot(this->__undirectedGraph, "./graph.dot");
         std::cout << "Graph has been written to graph.dot" << std::endl;
     }
 
 
-    std::vector<int> Graph::extractMSTSubTree(int startingVertexIndex)
-    {
-        graaf::undirected_graph<int, double> MSTGraph;
-        for (const auto& edge : this->__minimumSpanningTree) 
-        {
-            double weight = this->__undirectedGraph.get_edge(edge.first, edge.second);
-            MSTGraph.add_edge(edge.first, edge.second, weight);
-        }
+std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
+{
+    // 1. Build the MST as an adjacency list
+    std::unordered_map<int, std::vector<int>> mst_adj;
+    for (const auto& edge : this->__minimumSpanningTree) {
+        int u = edge.first;
+        int v = edge.second;
+        mst_adj[u].push_back(v);
+        mst_adj[v].push_back(u);
+    }
 
-        std::vector<int> subtree;
-        std::unordered_set<int> visited;
-        std::queue<int> q;
-
-        q.push(startingVertexIndex);
-        visited.insert(startingVertexIndex);
-        subtree.push_back(startingVertexIndex);
-
-        while (!q.empty()) {
-            auto v = q.front();
-            q.pop();
-
-            for (auto neighbor : MSTGraph.get_neighbors(v)) {
-                if (visited.count(neighbor) == 0) 
-                {
-                    visited.insert(neighbor);
-                    q.push(neighbor);
-                    subtree.push_back(neighbor);
-                }
+    // 2. Build parent map from the original root
+    std::unordered_map<int, int> parent_map;
+    std::function<void(int, int)> build_parent = [&](int node, int parent) {
+        parent_map[node] = parent;
+        for (int neighbor : mst_adj[node]) {
+            if (neighbor != parent) {
+                build_parent(neighbor, node);
             }
         }
-        return subtree;
-    }
+    };
+    build_parent(0, -1); // the original root is 0
+
+    // 3. Collect descendants of startingVertexIndex
+    std::vector<int> subtree;
+    std::function<void(int)> collect_descendants = [&](int node) {
+        subtree.push_back(node);
+        for (int neighbor : mst_adj[node]) {
+            if (parent_map[neighbor] == node) { // Only go to children
+                collect_descendants(neighbor);
+            }
+        }
+    };
+    collect_descendants(startingVertexIndex);
+
+    return subtree;
+}
 
 
     Graph::Graph(GraphType type): __isDirected(type == GraphType::Directed)

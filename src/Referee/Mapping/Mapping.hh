@@ -261,11 +261,22 @@ namespace Referee::Mapping
 
 
             /**
-             * @brief Extract a sub-tree from the graph's minimum spanning tree (computed earlier) and return its vertices. All vertices between the starting vertex and the leaves are included in the sub-tree.
+             * @brief Extract a sub-tree from the graph's minimum spanning tree (computed earlier) and return its vertices. All vertices between the starting vertex and the leaves are included in the sub-tree. The root of the original minimum spanning tree must have ID 0.
              * @param startingVertexIndex The index of the starting vertex for the sub-tree
              * @return A vector containing the sub-tree's vertices
              */
-            std::vector<int> extractMSTSubTree(int startingVertexIndex);
+            std::vector<int> ExtractMSTSubTree(int startingVertexIndex);
+
+
+            /**
+             * @brief Get the minimum spanning tree edges
+             * @return A vector of edges in the minimum spanning tree
+             */
+            std::vector<std::pair<long unsigned int, long unsigned int>> GetMinimumSpanningTree()
+            {
+                return this->__minimumSpanningTree;
+            }
+
 
         private:
 
@@ -306,6 +317,7 @@ namespace Referee::Mapping
              * @param numPointClouds Number of point clouds
              */
             MappingMatrix(int numPointClouds)
+                : __graph(Graph::GetInstanceOfUndirectedGraph()) // because we need to initialize the graph member. It is a singleton class, so we can initialize it here and fill it later with the actual graph.
             {
                 __mappingMatrix.resize(numPointClouds);
                 for (int i = 0; i < numPointClouds; i++)
