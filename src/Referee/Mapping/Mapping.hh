@@ -258,6 +258,14 @@ namespace Referee::Mapping
 
             Graph(GraphType type);
 
+            Graph(const Graph&) = delete;
+
+            Graph& operator=(const Graph&) = delete;
+            
+            Graph(Graph&&) = delete;
+            
+            Graph& operator=(Graph&&) = delete;
+
             std::unordered_map<Eigen::Vector3d, int> __vertexIndices; // Map to store the positions to their indices.
 
             static Graph* __instance;
