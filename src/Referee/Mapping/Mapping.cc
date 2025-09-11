@@ -4,18 +4,24 @@
 
 namespace Referee::Mapping
 {
-    Transformation::Transformation(Eigen::Matrix4d transformationMatrixInGlobalCoordinateSystem)
-        : __globalTransformation(transformationMatrixInGlobalCoordinateSystem)
+    Transformation::Transformation(Eigen::Matrix4d transformationMatrixInGlobalCoordinateSystem,
+                           std::shared_ptr<Scan> fromScan,
+                           std::shared_ptr<Scan> toScan)
+        : __globalTransformation(transformationMatrixInGlobalCoordinateSystem),
+          __fromScan(fromScan),
+          __toScan(toScan)
     {
         Eigen::Matrix3d rotationMatrix = transformationMatrixInGlobalCoordinateSystem.block<3, 3>(0, 0);
         Eigen::AngleAxisd angleAxis(rotationMatrix);
         __globalRotationVector = angleAxis.axis() * angleAxis.angle();
         __globalTranslation = transformationMatrixInGlobalCoordinateSystem.block<3, 1>(0, 3);
+        __quaternion = Eigen::Quaterniond(rotationMatrix);
     }
 
 
     void Transformation::PrintTransformation()
     {
+        std::cout << "Transformation from scan " << __fromScan->GetCloudFileName() << " to scan " << __toScan->GetCloudFileName() << std::endl;
         std::cout << "Rotation vector: " << __globalRotationVector.transpose() << std::endl;
         std::cout << "Rotation angle: " << __globalRotationVector.norm() << " radians" << std::endl;
         std::cout << "Translation: " << __globalTranslation.transpose() << std::endl;
@@ -106,6 +112,7 @@ namespace Referee::Mapping
             return {};
         }
         std::vector<std::pair<long unsigned int, long unsigned int>> mstEdges = mstEdgesOpt.value();
+        this->__minimumSpanningTree = mstEdges;
         return mstEdges;
     }
 
@@ -279,6 +286,34 @@ std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
         return std::make_tuple(mostProbableIndex, maxProbability);
     }
 
+
+    double MappingMatrix::GetOverallMeanRotation()
+    {
+        double overallMeanRotation = 0.0;
+        for (int i = 0; i < this->__connectivityMatrix.size(); i++)
+        {
+            Eigen::Vector3d positionIPointCloud = this->__initialPositions[i];
+            double meanRotation = 0.0;
+            for (int j : this->__connectivityMatrix[i])
+            {
+                Eigen::Vector3d positionJPointCloud = this->__initialPositions[j];
+                Eigen::Vector3d vectorIJ = positionJPointCloud - positionIPointCloud;
+                Eigen::Vector3d translation = this->__mappingMatrix[i][j].GetTranslation();
+                std::vector<double> angles = Referee::Utils::Trigonometry::SolveAlKashi(translation, vectorIJ, vectorIJ + translation);
+                if (angles.size() > 0)
+                {
+                    meanRotation += angles[0];
+                }
+            }
+            meanRotation /= this->__connectivityMatrix[i].size();
+            overallMeanRotation += meanRotation;
+        }
+        overallMeanRotation /= this->__connectivityMatrix.size();
+         std::cout << "[DEBUG] Overall mean rotation: " << overallMeanRotation << std::endl;
+        return overallMeanRotation;
+    }
+
+
     std::pair<int, double> MappingMatrix::GetMostProbableTranslation()
     {
         int mostProbableIndex = 0;
@@ -316,8 +351,8 @@ std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
             meanRotationsAndStdDevs.push_back(std::make_pair(this->__meanTransformations[i].GetRotationAngle(), this->__stdDevRotations[i]));
         }
         return meanRotationsAndStdDevs;
-
     }
+
 
     std::vector<std::pair<double, Eigen::Vector3d>> MappingMatrix::GetMeanTranslationVectorsAndStdDevs()
     {
@@ -328,10 +363,9 @@ std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
             double stdDev = this->__stdDevRotations[i]; // Assuming stdDev is the same for all components of the translation vector
             meanTranslationVectorsAndStdDevs.push_back(std::make_pair(translation.norm(), translation));
         }
-
-
         return meanTranslationVectorsAndStdDevs;
     }
+
 
     double MappingMatrix::ComputeMeanTranslationInducedRotation()
     {
@@ -359,9 +393,9 @@ std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
             }
         }
         meanTranslationInducedRotation /= count;
-
         return meanTranslationInducedRotation;
     }
+
     
     void MappingMatrix::ComputeRotationCoefficients(int mostTrustworthyPointCloudIndex)
     {
@@ -417,11 +451,11 @@ std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
                 // if the connectivity is not reciprocal, we set the rotation coefficient to 0
                 if (j != matchedIndex)
                 {
-
                     rotationCoefficients(i, j) = rotationAngle / this->__mappingMatrix[i][j].GetRotationAngle();
                 }
             }
         }
+
         // starting with the most trustworthy point cloud, backwards,
         for (int i = mostTrustworthyPointCloudIndex; i >= 0; i--)
         {
@@ -444,12 +478,12 @@ std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
                         {
                             rotationCoefficients(i, j) = 1 - alpha;
                             matchedIndex = j;
-
                             rotationAngle = this->__mappingMatrix[i][j].GetRotationAngle() * rotationCoefficients(i, j);
                         } 
                     }
                 }
             }
+
             for (int j : connectedPC)
             {
                 // if the connectivity is not reciprocal, we set the rotation coefficient to 0
@@ -466,13 +500,13 @@ std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
         {
             for(int j = 0; j < rotationCoefficients.cols(); j++)
             {
-
-                std::cout << rotationCoefficients(i, j) << " ";
+                std::cout << rotationCoefficients(i, j) << "   ";
             }
             std::cout << std::endl;
         }
         std::cout << std::endl;
     }
+
 
     void MappingMatrix::ComputeTranslationCoefficients(int mostTrustworthyPointCloudIndex)
     {
@@ -481,14 +515,12 @@ std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
         this->__translationFactorsWithRests.resize(numberFiles, std::vector<std::pair<double, Eigen::Vector3d>>(numberFiles, std::make_pair(0.0, Eigen::Vector3d::Zero())));
 
         Eigen::Vector3d mostTrustworthyTranslationVector = this->__meanTranslationVectors[mostTrustworthyPointCloudIndex];
-        for(int i = 0; i < numberFiles; i++)
+        this->__finalTranslations.resize(numberFiles, Eigen::Vector3d());
+        this->__finalTranslations[mostTrustworthyPointCloudIndex] = mostTrustworthyTranslationVector;
+
+        // Compute the translation factors for the most trustworthy point cloud and their reciprocates
+        for(int i : this->__connectivityMatrix[mostTrustworthyPointCloudIndex])
         {
-            if(i == mostTrustworthyPointCloudIndex)
-            {
-                this->__translationFactorsWithRests[i][i].first = 1.0;
-                this->__translationFactorsWithRests[i][i].second = this->__meanTranslationVectors[i];
-                continue;
-            }
             Eigen::Vector3d translationVector = this->__mappingMatrix[mostTrustworthyPointCloudIndex][i].GetTranslation();
             double projectionFactor = mostTrustworthyTranslationVector.dot(translationVector.normalized()) / translationVector.norm();
             Eigen::Vector3d projectionOfMeanVectorOnIndividualTranslationVector = projectionFactor * translationVector;
@@ -497,10 +529,128 @@ std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
             this->__translationFactorsWithRests[mostTrustworthyPointCloudIndex][i].second = rest;
             this->__translationFactorsWithRests[i][mostTrustworthyPointCloudIndex].first = 1.0 - projectionFactor;
             this->__translationFactorsWithRests[i][mostTrustworthyPointCloudIndex].second = rest;
-            std::cout << "[DEBUG]Projection factor for point cloud " << i << ": " << projectionFactor << std::endl;
+            Eigen::Vector3d resultingTranslationVector = -translationVector * (1.0 - projectionFactor) + rest;
 
+            if (resultingTranslationVector.norm() > 15.0) // if the resulting translation vector is too large, we skip it
+            {
+                std::cout << "[DEBUG]Skipping registration of " << mostTrustworthyPointCloudIndex << " on " << i << " because the resulting translation vector is too large" << std::endl;
+                continue;
+            }
+            this->__finalTranslations[i] = resultingTranslationVector;
+
+            std::cout << "[DEBUG]final translation vector for point cloud " << i << ": " << this->GetFinalTranslation(i).transpose() << std::endl;
+        }
+
+        // Compute the other translation factors for the connected point clouds
+        for(int i : this->__connectivityMatrix[mostTrustworthyPointCloudIndex])
+        {
+            Eigen::Vector3d translationVector = this->GetFinalTranslation(i); // this is by how much we need to move point cloud i
+            
+            for (int j : this->__connectivityMatrix[i])
+            {
+                Eigen::Vector3d initialTranslationVector = this->__mappingMatrix[i][j].GetTranslation();
+                double projectionFactor = translationVector.dot(initialTranslationVector.normalized()) / initialTranslationVector.norm();
+                Eigen::Vector3d projectionOfMeanVectorOnIndividualTranslationVector = projectionFactor * translationVector;
+                Eigen::Vector3d rest = translationVector - projectionOfMeanVectorOnIndividualTranslationVector;
+                this->__translationFactorsWithRests[i][j].first = projectionFactor;
+                this->__translationFactorsWithRests[i][j].second = rest;
+                this->__translationFactorsWithRests[j][i].first = 1.0 - projectionFactor;
+                this->__translationFactorsWithRests[j][i].second = rest;
+                Eigen::Vector3d resultingTranslationVector = -initialTranslationVector * (1.0 - projectionFactor) + rest;
+
+                if (resultingTranslationVector.norm() > 25.0) // if the resulting translation vector is too large, we skip it
+                {
+                    std::cout << "[DEBUG]Skipping registration of " << i << " on " << j << " because the resulting translation vector is too large" << std::endl;
+                    continue;
+                }
+
+                if(this->GetFinalTranslation(j).norm() == 0)
+                {
+                    this->__finalTranslations[j] = resultingTranslationVector;
+                }
+                std::cout << "[DEBUG]final translation vector for point cloud " << j << ": " << this->GetFinalTranslation(j).transpose() << std::endl;
+            }
+        }
+
+        // Compute the translation factors for the non-connected point clouds
+        for (int i = mostTrustworthyPointCloudIndex; i < numberFiles; i++)
+        {
+            std::vector<int> connectedPCs = this->__connectivityMatrix[i];
+            Eigen::Vector3d referenceTranslationVector = this->GetFinalTranslation(i);
+            for (int j : connectedPCs)
+            {
+                Eigen::Vector3d initialTranslationVector = this->__mappingMatrix[i][j].GetTranslation();
+                double projectionFactor = referenceTranslationVector.dot(initialTranslationVector.normalized()) / initialTranslationVector.norm();
+                Eigen::Vector3d projectionOfMeanVectorOnIndividualTranslationVector = projectionFactor * initialTranslationVector;
+                Eigen::Vector3d rest = referenceTranslationVector - projectionOfMeanVectorOnIndividualTranslationVector;
+                this->__translationFactorsWithRests[i][j].first = projectionFactor;
+                this->__translationFactorsWithRests[i][j].second = rest;
+                this->__translationFactorsWithRests[j][i].first = 1.0 - projectionFactor;
+                this->__translationFactorsWithRests[j][i].second = rest;
+                Eigen::Vector3d resultingTranslationVector = -initialTranslationVector * (1.0 - projectionFactor) + rest;
+                if(resultingTranslationVector.norm() > 25.0) // if the resulting translation vector is too large, we skip it
+                {
+                    std::cout << "[DEBUG]Skipping registration of " << i << " on " << j << " because the resulting translation vector is too large" << std::endl;
+                    continue;
+                }
+                if (this->GetFinalTranslation(j).norm() == 0)
+                {
+                    this->__finalTranslations[j] = resultingTranslationVector;
+                }
+
+                std::cout << "[DEBUG]final translation vector for point cloud " << j << ": " << this->GetFinalTranslation(j).transpose() << std::endl;
+            }
+        }
+
+        for (int i = mostTrustworthyPointCloudIndex; i >= 0; i--)
+        {
+            if (this->GetFinalTranslation(i).norm() != 0)
+            {
+                std::cout << "[DEBUG]Skipping point cloud " << i << " because it is already computed" << std::endl;
+                continue;
+            }
+
+            std::vector<int> connectedPC = this->__connectivityMatrix[i];
+            int rowSeed = -1;
+
+            for (int j : connectedPC)
+            {
+                if (this->__translationFactorsWithRests[i][j].first != 0)
+                {
+                    rowSeed = j;
+                    break;
+                }
+            }
+
+            Eigen::Vector3d referenceTranslationVector = this->GetFinalTranslation(i);
+
+            for (int j : connectedPC)
+            {
+                Eigen::Vector3d originalTranslationVector = this->__mappingMatrix[i][j].GetTranslation();
+                double projectionFactor = referenceTranslationVector.dot(originalTranslationVector.normalized()) / originalTranslationVector.norm();
+                Eigen::Vector3d projectionOfMeanVectorOnIndividualTranslationVector = projectionFactor * originalTranslationVector;
+                Eigen::Vector3d rest = referenceTranslationVector - projectionOfMeanVectorOnIndividualTranslationVector;
+                this->__translationFactorsWithRests[i][j].first = projectionFactor;
+                this->__translationFactorsWithRests[i][j].second = rest;
+                this->__translationFactorsWithRests[j][i].first = 1.0 - projectionFactor;
+                this->__translationFactorsWithRests[j][i].second = rest;
+                Eigen::Vector3d resultingTranslationVector = -originalTranslationVector * (1.0 - projectionFactor) + rest;
+
+                if(resultingTranslationVector.norm() > 25.0) // if the resulting translation vector is too large, we skip it
+                {
+                    std::cout << "[DEBUG]Skipping registration of " << i << " on " << j << " because the resulting translation vector is too large" << std::endl;
+                    continue;
+                }
+
+                if (this->GetFinalTranslation(j).norm() == 0)
+                {
+                    this->__finalTranslations[j] = resultingTranslationVector;
+                }
+                std::cout << "[DEBUG4]final translation vector for point cloud " << j << ": " << this->GetFinalTranslation(j).transpose() << std::endl;
+            }
         }
     }
+    
 
     std::vector<double> MappingMatrix::GetInitialRotationAngles()
     {
@@ -520,6 +670,7 @@ std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
         return initialRotationAngles;
     }
 
+
     void MappingMatrix::PrintMeanMatrices()
     {
         for(int i = 0; i < this->__meanTransformations.size(); i++)
@@ -530,107 +681,12 @@ std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
         }
     }
 
-    Graph& Graph::CreateUndirectedGraph()
+
+    Eigen::Matrix4d ComputeUmeyamaTransformationInSubtree(int i)
     {
-        if(!Graph::__instance)
-        {
-            Graph::__instance = new Graph(GraphType::Undirected);
-        }
-        return *Graph::__instance;
+        
     }
 
-    Graph& Graph::CreateUndirectedGraph(std::vector<Eigen::Vector3d> vertices, 
-                                        std::vector<std::vector<int>> edges)
-    {
-        Graph& graph = Graph::CreateUndirectedGraph();
-        for(const auto& vertex : vertices)
-        {
-            graph.AddVertex(vertex);
-        }
-        for(int i = 0; i < edges.size(); i++)
-        {
-            for(int j = 0; j < edges[i].size(); j++)
-            {
-                if(i != edges[i][j]) // avoid self-loops
-                {
-                    graph.AddEdge(vertices[i], vertices[edges[i][j]], (vertices[i] - vertices[edges[i][j]]).norm());
-                }
-            }
-        }
-        return graph;
-    }
-
-    Graph& Graph::GetInstanceOfUndirectedGraph()
-    {
-        if(!Graph::__instance)
-        {
-            Graph::__instance = &CreateUndirectedGraph();
-        }
-        if(Graph::__instance->__isDirected)
-        {
-            std::cerr << "Error: Trying to get an undirected graph instance, but the instance is directed." << std::endl;
-            exit(EXIT_FAILURE);
-        }
-        return *Graph::__instance;
-    }
-
-    void Graph::AddVertex(Eigen::Vector3d vertex)
-    {
-        int index = this->__nVertices;
-        this->__vertexIndices[vertex] = index;
-        this->__nVertices++;
-        __undirectedGraph.add_vertex(index);
-    }
-
-    void Graph::AddEdge(Eigen::Vector3d vertex1, 
-                        Eigen::Vector3d vertex2, 
-                        double distance)
-    {
-        int index1 = this->__vertexIndices[vertex1];
-        int index2 = this->__vertexIndices[vertex2];
-        __undirectedGraph.add_edge(index1, index2, distance);
-    }
-
-    std::vector<std::pair<long unsigned int, long unsigned int>> Graph::ComputeMinimumSpanningTree(Eigen::Vector3d rootVertex)
-    {
-        int rootVertexIndex = this->__vertexIndices[rootVertex];
-        if(!__undirectedGraph.has_vertex(rootVertexIndex))
-        {
-            std::cerr << "Error: Root vertex is not part of the graph." << std::endl;
-            exit(EXIT_FAILURE);
-        }
-
-        auto mstEdgesOpt = graaf::algorithm::prim_minimum_spanning_tree(this->__undirectedGraph, rootVertexIndex);
-
-        if (!mstEdgesOpt) {
-            std::cerr << "Error: Could not compute minimum spanning tree." << std::endl;
-            return {};
-        }
-        std::vector<std::pair<long unsigned int, long unsigned int>> mstEdges = mstEdgesOpt.value(); // mstEdges is std::vector<std::pair<size_t, size_t>>
-        return mstEdges;
-    }
-
-    void Graph::PrintGraph()
-    {
-        graaf::io::to_dot(this->__undirectedGraph, "./graph.dot");
-        std::cout << "Graph has been written to graph.dot" << std::endl;
-    }
-    
-    Graph::Graph(GraphType type): __isDirected(type == GraphType::Directed)
-    {
-        if(type == GraphType::Undirected)
-        {
-            this->__undirectedGraph = graaf::undirected_graph<int, double>();
-
-        }
-        else
-        {
-            std::cerr << "Error: Unsupported graph type." << std::endl;
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    Graph* Graph::__instance = nullptr;
 
     std::vector<std::vector<int>> CreateConnectivityMatrix(std::vector<Eigen::Vector3d> geolocations, int knn, double maxDistance)
     {
@@ -677,13 +733,13 @@ std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
             std::cout << "Neighbors for " << i << ": ";
             for (int j = 0; j < matrix[i].size(); j++) 
             {
-
                 std::cout << matrix[i][j] << " ";
             }
             std::cout << std::endl;
         }
         return matrix;
     }
+
 
     Eigen::Matrix4d ComputePairwiseTransformation(pcl::PointCloud<pcl::PointNormal>::Ptr source, pcl::PointCloud<pcl::PointNormal>::Ptr target, TransformationComputationMethod method)
     {
@@ -692,7 +748,6 @@ std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
         if(method == TransformationComputationMethod::GlobalMatch)
         {
             // Compute transformation using GlobalMatch, currently a copy of the main function from GlobalMatch's main.cpp
-            std::cout << "Computing transformation using GlobalMatch" << std::endl;
             GlobalMatch::Mapping::Mapping globalMatchMapping;
             pcl::PointCloud<pcl::PointXYZ>::Ptr sourceNoNormals(new pcl::PointCloud<pcl::PointXYZ>);
             pcl::PointCloud<pcl::PointXYZ>::Ptr targetNoNormals(new pcl::PointCloud<pcl::PointXYZ>);
@@ -726,13 +781,12 @@ std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
         {
             std::cerr << "Unknown transformation computation method" << std::endl;
         }
-
+        std::cout << "Transformation matrix: " << std::endl << transformation << std::endl;
         // convert Matrix4f to Matrix4d
         Eigen::Matrix4d transformationDouble = Eigen::Matrix4d::Identity();
         for(int i = 0; i < 4; i++)
         {
             for(int j = 0; j < 4; j++)
-
             {
                 transformationDouble(i, j) = transformation(i, j);
             }
@@ -741,18 +795,32 @@ std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
         return transformationDouble;
     }
 
+
     Eigen::Matrix4d RefinePairwiseTransformation(pcl::PointCloud<pcl::PointNormal>::Ptr target, pcl::PointCloud<pcl::PointNormal>::Ptr source, RefinementMethod method, double maxCorrespondenceDistance)
     {
         Eigen::Matrix4d transformation = Eigen::Matrix4d::Identity();
 
         if(method == RefinementMethod::ICPNormals)
         {
+            pcl::NormalEstimation<pcl::PointNormal, pcl::PointNormal> ne;
+            ne.setInputCloud(source);
+            pcl::search::KdTree<pcl::PointNormal>::Ptr tree(new pcl::search::KdTree<pcl::PointNormal>);
+            ne.setSearchMethod(tree);
+            pcl::PointCloud<pcl::PointNormal>::Ptr sourceWithNormals(new pcl::PointCloud<pcl::PointNormal>);
+            ne.setRadiusSearch(0.06);
+            ne.compute(*sourceWithNormals);
+            ne.setInputCloud(target);
+            pcl::PointCloud<pcl::PointNormal>::Ptr targetWithNormals(new pcl::PointCloud<pcl::PointNormal>);
+            ne.compute(*targetWithNormals);
+
+            std::cout << "Computing transformation using ICP with normals" << std::endl;
+
             pcl::IterativeClosestPointWithNormals<pcl::PointNormal, pcl::PointNormal> icpNormals;
-            icpNormals.setInputSource(source);
-            icpNormals.setInputTarget(target);
+            icpNormals.setInputSource(sourceWithNormals);
+            icpNormals.setInputTarget(targetWithNormals);
             icpNormals.setMaximumIterations(50);
             icpNormals.setMaxCorrespondenceDistance(maxCorrespondenceDistance);
-            icpNormals.setTransformationEpsilon(1e-8);
+            icpNormals.setTransformationEpsilon(0.0001);
             icpNormals.setEuclideanFitnessEpsilon(1);
 
             pcl::PointCloud<pcl::PointNormal>::Ptr dummy(new pcl::PointCloud<pcl::PointNormal>);
@@ -765,15 +833,38 @@ std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
                 {
                     transformation(i, j) = transformationf(i, j);
                 }
-
             }
         }
+        else if (method == RefinementMethod::ICP)
+        {
+            pcl::IterativeClosestPoint<pcl::PointNormal, pcl::PointNormal> icp;
+            icp.setInputSource(source);
+            icp.setInputTarget(target);
+            icp.setMaximumIterations(3);
+            icp.setMaxCorrespondenceDistance(maxCorrespondenceDistance);
+            icp.setTransformationEpsilon(0.0001);
+            icp.setEuclideanFitnessEpsilon(1);
+
+            pcl::PointCloud<pcl::PointNormal>::Ptr dummy(new pcl::PointCloud<pcl::PointNormal>);
+            icp.align(*dummy);
+            Eigen::Matrix4f transformationf = icp.getFinalTransformation();
+            // convert Matrix4f to Matrix4d
+            for(int i = 0; i < 4; i++)
+            {
+                for(int j = 0; j < 4; j++)
+                {
+                    transformation(i, j) = transformationf(i, j);
+                }
+            }
+        }
+        
         else
         {
             std::cerr << "Unknown refinement method" << std::endl;
         }
         return transformation;
     }
+
 
     std::vector<Eigen::Vector3d> ComputeScrewAxis(Eigen::Matrix4d transformationMatrix)
     {
