@@ -55,7 +55,7 @@ int main()
     mappingMatrix.SetConnectivityMatrix(matrix);
     mappingMatrix.SetInitialPositions(initialTranslationVectors);
 
-    Referee::Mapping::Graph graph = Referee::Mapping::Graph::CreateUndirectedGraph(initialTranslationVectors, matrix);
+    Referee::Mapping::Graph& graph = Referee::Mapping::Graph::CreateUndirectedGraph(initialTranslationVectors, matrix);
     graph.PrintGraph();
     
     std::vector<std::vector<Eigen::Vector3d>> computedTranslations;
@@ -65,7 +65,7 @@ int main()
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredFinalPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
     // Limit the number of concurrent threads to 10
-    const int maxThreads = 6;
+    const int maxThreads = 10;
     std::vector<std::thread> threads;
     std::vector<std::tuple<int, int>> jobs;
 
@@ -112,11 +112,14 @@ int main()
     }
 
     std::tuple<int, double> mostProbableRotation = mappingMatrix.GetMostProbableRotation();
-    std::vector<std::pair<long unsigned int, long unsigned int>> minimumSpanningTree = graph.ComputeMinimumSpanningTree(initialTranslationVectors[std::get<0>(mostProbableRotation)]);
-    std::cout << "Minimum spanning tree edges:" << std::endl;
-    for (const auto& edge : minimumSpanningTree)
+    std::cout << "Vertex Count: " << mappingMatrix.GetGraph().GetVertexCount() << std::endl;
+    mappingMatrix.GetGraph().ComputeMinimumSpanningTree(std::get<0>(mostProbableRotation));
+    double overallMeanRotation = mappingMatrix.GetOverallMeanRotation();
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr finalPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    for(int i = 0; i < mappingMatrix.GetGraph().GetMinimumSpanningTree().size(); i++)
     {
-        std::cout << "Edge: " << edge.first << " - " << edge.second << std::endl;
+        std::pair<int, int> edge = mappingMatrix.GetGraph().GetMinimumSpanningTree()[i];
+        std::cout << "Edge from point cloud " << edge.first << " to point cloud " << edge.second << std::endl;
     }
 
     for(int i = mappingMatrix.GetGraph().GetMinimumSpanningTree().size() - 1; i >= 0; i--)
