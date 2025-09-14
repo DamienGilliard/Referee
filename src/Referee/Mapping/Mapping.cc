@@ -1,6 +1,4 @@
 #include "Mapping.hh"
-#include "../GeometricTransformations/GeometricTransformation.hh"
-#include "../Probability/Probability.hh"
 
 namespace Referee::Mapping
 {

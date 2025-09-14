@@ -3,17 +3,27 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <unordered_map>
+#include <unordered_set>
+#include <queue>
+
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/registration/icp.h>
+#include <pcl/io/ply_io.h>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <unsupported/Eigen/MatrixFunctions>
-#include "../../3rd_party/GlobalMatch/code/global_match/stem_mapping.h"
-#include "../../3rd_party/GlobalMatch/code/global_match/stem_matching.h"
 #include <graaflib/graph.h>
+#include <graaflib/edge.h>
 #include <graaflib/io/dot.h>
 #include <graaflib/algorithm/minimum_spanning_tree/prim.h>
+
+#include "../../3rd_party/GlobalMatch/code/global_match/stem_mapping.h"
+#include "../../3rd_party/GlobalMatch/code/global_match/stem_matching.h"
+#include "../GeometricTransformations/GeometricTransformation.hh"
+#include "../Probability/Probability.hh"
+#include "../Utils/Utils.hh"
 
 
 // Hash function for Eigen::Vector3d to use it in unordered_map
