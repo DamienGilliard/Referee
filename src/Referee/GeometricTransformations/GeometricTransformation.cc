@@ -18,6 +18,7 @@ namespace Referee::Transformations
         return meanTranslationVector;
     }
 
+
     std::vector<Eigen::Vector3d> CalculateMedianPlane(Eigen::Vector3d point1, Eigen::Vector3d point2)
     {
         std::vector<Eigen::Vector3d> planeOriginAndNormal;
@@ -27,6 +28,7 @@ namespace Referee::Transformations
         planeOriginAndNormal.push_back(planeNormal);
         return planeOriginAndNormal;
     }
+
 
     Eigen::Vector3d CalculatePlaneIntersection(std::vector<Eigen::Vector3d> plane1, std::vector<Eigen::Vector3d> plane2, std::vector<Eigen::Vector3d> plane3)
     {
@@ -63,6 +65,7 @@ namespace Referee::Transformations
         return intersectionPoint;
     }
 
+
     Eigen::Vector3d CalculateResultingTranslation(Eigen::Matrix4d transformationMatrix, Eigen::Vector3d poseOrigin)
     {
         Eigen::Matrix3d rotationMatrix = transformationMatrix.block<3, 3>(0, 0);
@@ -71,6 +74,7 @@ namespace Referee::Transformations
         return resultingTranslation;
     }
 
+    
     double CalculateResultingRotationAngle(std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> positionsAndTranslations)
     {
         Eigen::Vector3d sumOfMoments = Eigen::Vector3d::Zero();

@@ -32,6 +32,8 @@ namespace Referee::Transformations
             point.z += z;
         }
     }
+    
+    
     /**
      * @brief Transform a point cloud by a given transformation matrix
      * @tparam PointT Point type of the point cloud
@@ -51,12 +53,14 @@ namespace Referee::Transformations
         }
     }
 
+
     /**
      * @brief Recenter translation vectors by subtracting the mean translation vector
      * @param translationVectors Translation vectors to be recentered. The translation vectors will be modified in place
      * @return Eigen::Vector3d Mean translation vector, which was subtracted from the translation vectors.
      */
     Eigen::Vector3d RecenterTranslationVectors(std::vector<Eigen::Vector3d> &translationVectors);
+
 
     /**
      * @brief Calculate the median plane between two points
@@ -65,6 +69,7 @@ namespace Referee::Transformations
      * @return std::vector<Eigen::Vector3d> A vector containing two elements: the origin (first element) and the normal vector (second element) of the plane
      */
     std::vector<Eigen::Vector3d> CalculateMedianPlane(Eigen::Vector3d point1, Eigen::Vector3d point2);
+
 
     /**
      * @brief Calculate the intersection point of three planes
@@ -76,13 +81,15 @@ namespace Referee::Transformations
      */
     Eigen::Vector3d CalculatePlaneIntersection(std::vector<Eigen::Vector3d> plane1, std::vector<Eigen::Vector3d> plane2, std::vector<Eigen::Vector3d> plane3);
 
+
     /**
-     * @brief Falculate the resulting translation of a transformation matrix, meaning the translation induced by the rotation plus the translation of the transformation matrix
+     * @brief Calculate the resulting translation of a transformation matrix, meaning the translation induced by the rotation plus the translation of the transformation matrix
      * @param transformationMatrix Transformation matrix
      * @param poseOrigin Origin of the pose
      * @return Eigen::Vector3d Resulting translation of the transformation matrix
      */
     Eigen::Vector3d CalculateResultingTranslation(Eigen::Matrix4d transformationMatrix, Eigen::Vector3d poseOrigin);
+
 
     /**
      * @brief Compute the resulting rotation angle from a set of positions and translations. It can be compared to the rotational of a set of translations in space
