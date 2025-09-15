@@ -682,7 +682,38 @@ std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
 
     Eigen::Matrix4d ComputeUmeyamaTransformationInSubtree(int i)
     {
+        std::vector<int> subtreeIndices = Graph::GetInstanceOfUndirectedGraph().ExtractMSTSubTree(i);
+        std::cout << "[DEBUG] Subtree indices starting from " << i << ": ";
+        for (int index : subtreeIndices)
+        {
+            std::cout << index << " ";
+        }
+        std::cout << std::endl;
+
+        Eigen::MatrixXd sourcePoints(3, subtreeIndices.size());
+        Eigen::MatrixXd targetPoints(3, subtreeIndices.size());
+        if(subtreeIndices.size() > 1)
+        {
+            for (size_t k = 0; k < subtreeIndices.size(); ++k) 
+            {
+                int subtreeIndex = subtreeIndices[k];
+                Eigen::Vector3d sourcePoint = this->GetScan(subtreeIndex).GetPose().GetPosition();
+                Eigen::Vector3d targetPoint = this->GetInitialPosition(subtreeIndex);
+                sourcePoints.col(k) = sourcePoint;
+                targetPoints.col(k) = targetPoint;
+            }
+        }
+        else
+        {
+            std::cerr << "Error: Subtree has only one node, cannot compute Umeyama transformation." << std::endl;
+            return Eigen::Matrix4d::Identity();
+        }
+        std::cout << "[DEBUG] Source points: " << std::endl << sourcePoints << std::endl;
+        std::cout << "[DEBUG] Target points: " << std::endl << targetPoints << std::endl;
         
+        Eigen::Matrix4d umeyamaTransformation = Eigen::umeyama(sourcePoints, targetPoints, false);
+        
+        return umeyamaTransformation;
     }
 
 

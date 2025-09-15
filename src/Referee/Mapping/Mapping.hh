@@ -562,6 +562,16 @@ namespace Referee::Mapping
              */
             void PrintMeanMatrices();
 
+
+            // Algorithms
+            
+            /**
+             * @brief Compute the Umeyama transformation between the current positions of the scans and their initial positions, for all the scans in the sub tree of the minimum spanning tree, starting from the given point cloud index
+             * @param i Index of the point cloud
+             * @return Eigen::Matrix4d Umeyama transformation matrix
+             */
+            Eigen::Matrix4d ComputeUmeyamaTransformationInSubtree(int i);
+
         private:
             /**
              * @brief Mapping matrix between the point clouds, where each element is the transformation matrix between two point clouds
