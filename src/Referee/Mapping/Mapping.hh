@@ -405,6 +405,57 @@ namespace Referee::Mapping
                 this->__connectivityMatrix = connectivityMatrix;
             }
 
+
+            /**
+             * @brief Getter for the connectivity matrix
+             * @return Connectivity matrix
+             */
+            std::vector<std::vector<int>> GetConnectivityMatrix()
+            {
+                return this->__connectivityMatrix;
+            }
+
+            
+            /**
+             * @brief Setter for the list of scans (point clouds with associated poses)
+             * @param scans List of scans
+             */
+            void SetScans(std::vector<Referee::Mapping::Scan>& scans)
+            {
+                this->__scans = scans;
+            }
+
+
+            /**
+             * @brief Getter for the list of scans (point clouds with associated poses)
+             * @return List of scans
+             */
+            std::vector<Referee::Mapping::Scan>& GetScans()
+            {
+                return this->__scans;
+            }
+
+            /**
+             * @brief Getter for a scan at a given index
+             * @param index Index of the scan
+             * @return Scan at the given index
+             */
+            Referee::Mapping::Scan& GetScan(int index)
+            {
+                return this->__scans[index];
+            }
+
+
+            /**
+             * @brief Getter for the graph singleton instance
+             * @return Graph
+             */
+            Graph& GetGraph()
+            {
+                return this->__graph.GetInstanceOfUndirectedGraph();
+            }
+
+
             /**
              * @brief Set the initial positions of the point clouds
              * @param initialPositions Initial positions of the point clouds
@@ -577,6 +628,11 @@ namespace Referee::Mapping
              * @brief Mapping matrix between the point clouds, where each element is the transformation matrix between two point clouds
              */
             std::vector<std::vector<Referee::Mapping::Transformation>> __mappingMatrix;
+
+            /**
+             * @brief List of scans (point clouds with associated poses)
+             */
+            std::vector<Referee::Mapping::Scan> __scans;
 
             /**
              * @brief Mean transformation matrix per point cloud
