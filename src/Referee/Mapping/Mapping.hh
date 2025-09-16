@@ -489,6 +489,12 @@ namespace Referee::Mapping
             }
 
 
+            // Getters and setters
+
+            /**
+             * @brief Setter for the connectivity matrix
+             * @param connectivityMatrix Connectivity matrix
+             */
             void SetConnectivityMatrix(std::vector<std::vector<int>> connectivityMatrix)
             {
                 this->__connectivityMatrix = connectivityMatrix;
@@ -554,10 +560,29 @@ namespace Referee::Mapping
                 this->__initialPositions = initialPositions;
             }
 
-            std::vector<std::vector<int>> GetConnectivityMatrix()
+
+            /**
+             * @brief Getter for the initial position of a point cloud
+             * @param i Index of the point cloud
+             * @return Initial position of the point cloud
+             */
+            Eigen::Vector3d GetInitialPosition(int i)
             {
-                return this->__connectivityMatrix;
+                return this->__initialPositions[i];
             }
+
+
+            /**
+             * @brief Setter for the transformation matrix between two point clouds
+             * @param i Index of the first point cloud
+             * @param j Index of the second point cloud
+             * @param transformation Transformation matrix between the two point clouds
+             */
+            void SetTransformation(int i, int j, Referee::Mapping::Transformation transformation)
+            {
+                __mappingMatrix[i][j] = transformation;
+            }
+
 
             /**
              * @brief Getter of the transformation matrix between two point clouds
@@ -578,7 +603,7 @@ namespace Referee::Mapping
              */
             double GetStdDevRotation(int i){return __stdDevRotations[i];}
 
-            
+
             /**
              * @brief Getter for the mean rotation angle of the transformation matrices
              * @param i Index of the point cloud
@@ -593,16 +618,6 @@ namespace Referee::Mapping
              * @return Mean translation vector of the transformation matrices
              */
             Eigen::Vector3d GetMeanTranslationVector(int i){return __meanTranslationVectors[i];}
-
-
-            /**
-             * @brief Getter for the minimum spanning tree of the graph
-             * @return Minimum spanning tree of the graph as a vector of edges (pairs of vertex indices)
-             */
-            std::vector<std::pair<long unsigned int, long unsigned int>> GetMinimumSpanningTree()
-            {
-                __mappingMatrix[i][j] = transformation;
-            }
 
 
             /**
@@ -625,6 +640,14 @@ namespace Referee::Mapping
              */
             std::tuple<int, double> GetMostProbableRotation();
 
+
+            /**
+             * @brief Computes the overall mean rotation of the original point clouds, i.e. the mean error in orientation of the scanner's compass.
+             * @return Overall mean rotation angle (in radians)
+             */
+            double GetOverallMeanRotation();
+
+            
             /**
              * @brief Computes the most probable translation vector throughout the point clouds
              * @return A pair containing the index of the point cloud with the most probable translation vector and the probability of this translation vector
@@ -680,6 +703,12 @@ namespace Referee::Mapping
             }
 
 
+            /**
+             * @brief Getter for the translation factor with rest
+             * @param i Index of the first point cloud (index of the row)
+             * @param j Index of the second point cloud (index of the column)
+             * @return Translation factor with rest
+             */
             std::pair<double, Eigen::Vector3d> GetTranslationFactorWithRest(int i, int j)
             {
                 return __translationFactorsWithRests[i][j];
@@ -691,12 +720,38 @@ namespace Referee::Mapping
              * @return A vector of the initial rotation angles
              */
             std::vector<double> GetInitialRotationAngles();
+
+
+            /**
+             * @brief Setter for the final translation vectors
+             * @param index Index of the point cloud
+             * @param finalTranslation Final translation vector to be applied to the point cloud
+             */
+            void SetFinalTranslation(int index, Eigen::Vector3d finalTranslation)
+            {
+                this->__finalTranslations[index] = finalTranslation;
+            }
+
+
+            /**
+             * @brief Getter for the final translation vector of a given point cloud
+             * @param index Index of the point cloud
+             * @return The final translation vector
+             */
+            Eigen::Vector3d GetFinalTranslation(int index)
+            {
+                return this->__finalTranslations[index];
+            }
+
+
+            // Printers
+
             /**
              * @brief Print the mapping matrix to the console
              */
             void PrintMatrix();
 
-            
+
             /**
              * @brief Print the mean transformation matrices to the console
              */
