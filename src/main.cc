@@ -45,7 +45,7 @@ int main()
         Eigen::Quaterniond baseQuaternion = Eigen::Quaterniond::Identity(); // No rotation
         std::cout << baseQuaternion.coeffs().transpose() << std::endl;
         Referee::Mapping::Pose pose = Referee::Mapping::Pose(initialTranslationVectors[i], baseQuaternion);
-        Referee::Mapping::Scan scan = Referee::Mapping::Scan(pose, plyFileNames[i]);
+        Referee::Mapping::Scan scan = Referee::Mapping::Scan(pose, plyFileNames[i], 0.01);
         Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(scan.GetCloud(), initialTranslationVectors[i]);
         scans.push_back(scan);
     }

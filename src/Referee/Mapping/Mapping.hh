@@ -151,11 +151,13 @@ namespace Referee::Mapping
              * @param pose Initial pose of the scan in the global coordinate system
              * @param cloudFileName File name of the point cloud to be loaded (PLY format)
              */
-            Scan(Pose pose, std::string cloudFileName) : __pose(pose), 
+            Scan(Pose pose, std::string cloudFileName, double voxelSize) : __pose(pose), 
                                                          __cloud(new pcl::PointCloud<pcl::PointNormal>), 
-                                                         __cloudFileName(cloudFileName) 
+                                                         __cloudFileName(cloudFileName), 
+                                                         __voxelSize(voxelSize)
             {
                 pcl::io::loadPLYFile<pcl::PointNormal>(cloudFileName, *__cloud);
+                Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(__cloud, voxelSize);
             }
 
 
