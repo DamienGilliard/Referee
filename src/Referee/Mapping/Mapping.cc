@@ -691,7 +691,7 @@ namespace Referee::Mapping
     }
 
 
-    Eigen::Matrix4d ComputeUmeyamaTransformationInSubtree(int i)
+    Eigen::Matrix4d MappingMatrix::ComputeUmeyamaTransformationInSubtree(int i)
     {
         std::vector<int> subtreeIndices = Graph::GetInstanceOfUndirectedGraph().ExtractMSTSubTree(i);
         std::cout << "[DEBUG] Subtree indices starting from " << i << ": ";
