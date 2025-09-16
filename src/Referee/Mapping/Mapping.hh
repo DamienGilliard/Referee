@@ -827,74 +827,13 @@ namespace Referee::Mapping
              * @brief For each point cloud we store the final translation vector that should be applied to the point cloud to get it in the global coordinate system
              */
             std::vector<Eigen::Vector3d> __finalTranslations;
+
+            /**
+             * @brief Graph to store the connectivity between the point clouds
+             */
+            Graph& __graph;
     };
 
-    enum class GraphType
-    {
-        Undirected, // Undirected graph
-        Directed // Directed graph
-    };
-
-    class Graph
-    {
-        public: 
-            /**
-             * @brief Create a new undirected graph instance if none exists (singleton pattern)
-             * @return Graph instance
-             */
-            static Graph& CreateUndirectedGraph();
-
-            /**
-             * @brief Create a new undirected graph singleton instance with given vertices and edges
-             * @param vertices List of vertices to add to the graph
-             * @param edges List of edges to add to the graph
-             * @return Graph instance
-             */
-            static Graph& CreateUndirectedGraph(std::vector<Eigen::Vector3d> vertices, std::vector<std::vector<int>> edges);
-
-            /**
-             * @brief Get the instance of the undirected graph
-             * @return Graph instance
-             */
-            static Graph& GetInstanceOfUndirectedGraph();
-
-            /**
-             * @brief Add a vertex to the graph
-             * @param vertex The vertex to add
-             */
-            void AddVertex(Eigen::Vector3d vertex);
-
-            /**
-             * @brief Add an edge to the graph
-             * @param vertex1 The first vertex of the edge
-             * @param vertex2 The second vertex of the edge
-             * @param weight The weight to assign to the edge
-             */
-            void AddEdge(Eigen::Vector3d vertex1, 
-                         Eigen::Vector3d vertex2, 
-                         double weight);
-            /**
-             * @brief Compute the minimum spanning tree of the graph using Prim's algorithm
-             * @return A vector of vertices in the minimum spanning tree
-             */
-            std::vector<std::pair<long unsigned int, long unsigned int>> ComputeMinimumSpanningTree(Eigen::Vector3d startVertex);
-
-            void PrintGraph();
-
-        private:
-            Graph(GraphType type);
-
-            std::unordered_map<Eigen::Vector3d, int> __vertexIndices; // Map to store the positions to their indices.
-
-            static Graph* __instance;
-
-            int __nVertices = 0; // Number of vertices in the graph
-
-            const bool __isDirected;
-
-            graaf::undirected_graph<int, double> __undirectedGraph; // Undirected graph to store the connectivity between the point clouds
-    };
-    
 
     /**
      * @brief Create a connectivity matrix from a set of geolocations
