@@ -259,14 +259,11 @@ namespace Referee::Mapping
     {
         public:
             Transformation() = default;
-            Transformation(Eigen::Matrix4d transformationMatrixInGlobalCoordinateSystem);
-    // class ChaslesTransformation
-    // {
-        // public:
-            // ChaslesTransformation() = default;
-            // ChaslesTransformation(Eigen::Vector3d rotationAxis, Eigen::Vector3d pointOnAxis, double rotationAngle, Eigen::Vector3d translation)
-            //     : __rotationAxis(rotationAxis), __pointOnAxis(pointOnAxis), __rotationAngle(rotationAngle), __translation(translation) {}
-            // ChaslesTransformation(Eigen::Matrix4d transformationMatrix);
+
+            
+            Transformation(Eigen::Matrix4d transformationMatrixInGlobalCoordinateSystem,
+                           std::shared_ptr<Scan> fromScan = nullptr,
+                           std::shared_ptr<Scan> toScan = nullptr);
 
             /**
              * @brief Print the transformation to the console
