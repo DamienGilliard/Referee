@@ -142,43 +142,43 @@ namespace Referee::Mapping
     }
 
 
-std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
-{
-    // 1. Build the MST as an adjacency list
-    std::unordered_map<int, std::vector<int>> mst_adj;
-    for (const auto& edge : this->__minimumSpanningTree) {
-        int u = edge.first;
-        int v = edge.second;
-        mst_adj[u].push_back(v);
-        mst_adj[v].push_back(u);
+    std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
+    {
+        // 1. Build the MST as an adjacency list
+        std::unordered_map<int, std::vector<int>> mst_adj;
+        for (const auto& edge : this->__minimumSpanningTree) {
+            int u = edge.first;
+            int v = edge.second;
+            mst_adj[u].push_back(v);
+            mst_adj[v].push_back(u);
+        }
+
+        // 2. Build parent map from the original root
+        std::unordered_map<int, int> parent_map;
+        std::function<void(int, int)> build_parent = [&](int node, int parent) {
+            parent_map[node] = parent;
+            for (int neighbor : mst_adj[node]) {
+                if (neighbor != parent) {
+                    build_parent(neighbor, node);
+                }
+            }
+        };
+        build_parent(0, -1); // the original root is 0
+
+        // 3. Collect descendants of startingVertexIndex
+        std::vector<int> subtree;
+        std::function<void(int)> collect_descendants = [&](int node) {
+            subtree.push_back(node);
+            for (int neighbor : mst_adj[node]) {
+                if (parent_map[neighbor] == node) { // Only go to children
+                    collect_descendants(neighbor);
+                }
+            }
+        };
+        collect_descendants(startingVertexIndex);
+
+        return subtree;
     }
-
-    // 2. Build parent map from the original root
-    std::unordered_map<int, int> parent_map;
-    std::function<void(int, int)> build_parent = [&](int node, int parent) {
-        parent_map[node] = parent;
-        for (int neighbor : mst_adj[node]) {
-            if (neighbor != parent) {
-                build_parent(neighbor, node);
-            }
-        }
-    };
-    build_parent(0, -1); // the original root is 0
-
-    // 3. Collect descendants of startingVertexIndex
-    std::vector<int> subtree;
-    std::function<void(int)> collect_descendants = [&](int node) {
-        subtree.push_back(node);
-        for (int neighbor : mst_adj[node]) {
-            if (parent_map[neighbor] == node) { // Only go to children
-                collect_descendants(neighbor);
-            }
-        }
-    };
-    collect_descendants(startingVertexIndex);
-
-    return subtree;
-}
 
 
     Graph::Graph(GraphType type): __isDirected(type == GraphType::Directed)
