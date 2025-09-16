@@ -169,6 +169,13 @@ namespace Referee::Mapping
 
 
             /**
+             * @brief Rotate the scan by a given transformation matrix
+             * @param transformation Transformation matrix in the global coordinate system
+             */
+            void TransformScan(Eigen::Matrix4d transformation);
+
+
+            /**
              * @brief Get a pointer to the pose of the scan
              * @return Pointer to the pose in the global coordinate system
              */

@@ -2,6 +2,17 @@
 
 namespace Referee::Mapping
 {
+    void Scan::TransformScan(Eigen::Matrix4d transformation)
+    {
+        Eigen::Vector3d translation = transformation.block<3,1>(0,3);
+        Eigen::Matrix3d rotationMatrix = transformation.block<3,3>(0,0);
+        Eigen::Quaterniond rotation(rotationMatrix);
+        __pose.Rotate(rotation);
+        __pose.Translate(translation);
+        Referee::Transformations::TransformPointCloud<pcl::PointNormal>(__cloud, transformation);
+    }
+
+
     Transformation::Transformation(Eigen::Matrix4d transformationMatrixInGlobalCoordinateSystem,
                            std::shared_ptr<Scan> fromScan,
                            std::shared_ptr<Scan> toScan)
