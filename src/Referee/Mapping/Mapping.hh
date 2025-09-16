@@ -57,13 +57,58 @@ namespace Referee::Mapping
         public:
             Pose() = default;
             Pose(Eigen::Vector3d position, Eigen::Quaterniond orientation)
-                : __position(position), __orientation(orientation) {}
+                : __position(position), __orientation(orientation) 
+                {
+                    std::cout << "Pose created with position: " << __position.transpose() 
+                              << " and orientation (quaternion): " << __orientation.coeffs().transpose() << std::endl;
+                }
 
-            Eigen::Vector3d GetPosition() const { return __position; }
-            Eigen::Quaterniond GetOrientation() const { return __orientation; }
+
+            /**
+             * @brief Get the Position object
+             * @return Position in the global coordinate system
+             */
+            Eigen::Vector3d& GetPosition() { return this->__position; }
+
+
+            /**
+             * @brief Set the Position object
+             * @param position New position in the global coordinate system
+             */
+            void SetPosition(Eigen::Vector3d& position) { this->__position = position; }
+
+
+            /**
+             * @brief Translate the position by a given vector
+             * @param translation Translation vector in the global coordinate system
+             */
+            void Translate(Eigen::Vector3d& translation) { this->__position += translation; }
+
+
+            /**
+             * @brief Get the Orientation quaternion object
+             * @return Orientation in the global coordinate system as a quaternion
+             */
+            Eigen::Quaterniond& GetOrientation() { return this->__orientation; }
+
+
+
+            /**
+             * @brief Set the Orientation object
+             * @param orientation New orientation in the global coordinate system as a quaternion
+             */
+            void SetOrientation(Eigen::Quaterniond& orientation) { this->__orientation = orientation; }
+
+
+            /**
+             * @brief Rotate the orientation by a given quaternion
+             * @param rotation Rotation quaternion in the global coordinate system
+             */
+            void Rotate(Eigen::Quaterniond& rotation) { this->__orientation = rotation * this->__orientation; }
 
         private:
             Eigen::Vector3d __position; // Position in the global coordinate system
+
             Eigen::Quaterniond __orientation; // Orientation in the global coordinate system
     };
 
@@ -94,7 +139,7 @@ namespace Referee::Mapping
                 if(!__instance){__instance = new GlobalCoordinateSystem(type, origin, orientation);}
                 return *__instance;
             }
-                                                                       Eigen::Quaterniond orientation = Eigen::Quaterniond::Identity())
+
         private:
             GlobalCoordinateSystem(CoordinateSystemType type = CoordinateSystemType::WGS84,
                                    Eigen::Vector3d origin = Eigen::Vector3d::Zero(),
@@ -119,6 +164,7 @@ namespace Referee::Mapping
              */
 
             CoordinateSystemType __type = CoordinateSystemType::WGS84; // type of the global coordinate system
+
             /**
              * @brief Origin of the global coordinate system
              */
@@ -179,7 +225,7 @@ namespace Referee::Mapping
              * @brief Get a pointer to the pose of the scan
              * @return Pointer to the pose in the global coordinate system
              */
-            Pose& GetPose() { return __pose; }
+            Pose& GetPose() { return this->__pose; }
 
 
             /**
@@ -197,8 +243,11 @@ namespace Referee::Mapping
 
 
         private:
+
             Pose __pose;
+
             pcl::PointCloud<pcl::PointNormal>::Ptr __cloud;
+
             std::string __cloudFileName;
     };
 
