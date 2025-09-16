@@ -745,7 +745,6 @@ std::vector<int> Graph::ExtractMSTSubTree(int startingVertexIndex)
                     // Calculate distance between geolocations
                     double distance = std::pow(geolocations[i].x() - geolocations[j].x(), 2) + std::pow(geolocations[i].y() - geolocations[j].y(), 2) + std::pow(geolocations[i].z() - geolocations[j].z(), 2);
                     distance = sqrt(distance);
-                    std::cout << "Distance between " << i << " and " << j << ": " << distance << std::endl;
                     distancesToOtherPcs[i].push_back(std::make_pair(j, distance));
                     totalMatrix[i].push_back(j);
                 }
