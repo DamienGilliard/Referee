@@ -222,14 +222,7 @@ namespace Referee::Mapping
             /**
              * @brief Load the point cloud from the file
              */
-            void LoadCloud()
-            {
-                __cloud.reset(new pcl::PointCloud<pcl::PointNormal>());
-                pcl::io::loadPLYFile(__cloudFileName, *__cloud);
-                Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(__cloud, 0.01);
-                this->TranslateScan(this->__pose.GetPosition());
-                this->TransformScan(this->__pose.GetOrientation().toRotationMatrix().homogeneous());
-            }
+            void LoadCloud();
 
 
             /**

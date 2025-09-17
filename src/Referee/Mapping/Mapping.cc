@@ -13,6 +13,23 @@ namespace Referee::Mapping
     }
 
 
+    void  Scan::LoadCloud()
+            {
+                if(this->__cloud.size() > 0)
+                {
+                    std::cout << "Point cloud already loaded." << std::endl;
+                    return;
+                }
+                __cloud.reset(new pcl::PointCloud<pcl::PointNormal>());
+                pcl::io::loadPLYFile(__cloudFileName, *__cloud);
+                Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(__cloud, 0.01);
+                Eigen::Matrix4d transformation = Eigen::Matrix4d::Identity();
+                transformation.block<3,3>(0,0) = this->__pose.GetOrientation().toRotationMatrix();
+                transformation.block<3,1>(0,3) = this->__pose.GetPosition();
+                this->TransformScan(transformation);
+            }
+
+
     Transformation::Transformation(Eigen::Matrix4d transformationMatrixInGlobalCoordinateSystem,
                            std::shared_ptr<Scan> fromScan,
                            std::shared_ptr<Scan> toScan)
