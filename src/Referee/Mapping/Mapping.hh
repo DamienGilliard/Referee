@@ -146,9 +146,7 @@ namespace Referee::Mapping
                                    Eigen::Quaterniond orientation = Eigen::Quaterniond::Identity())
                 : __type(type), __origin(origin), __orientation(orientation) {}
 
-                                   Eigen::Vector3d origin = Eigen::Vector3d::Zero(),
             GlobalCoordinateSystem(const GlobalCoordinateSystem&) = delete; // prevent copying
-
 
             GlobalCoordinateSystem& operator=(const GlobalCoordinateSystem&) = delete; // prevent assignment
 
