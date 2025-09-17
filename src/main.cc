@@ -11,13 +11,20 @@ void ComputeTransformationInThread(Eigen::Vector3d initialTranslationSource,
                             double voxelSize,
                             Referee::Mapping::MappingMatrix& mappingMatrix)
 {
+    scans[sourcePointCloudFileIndex].LoadCloud();
+    scans[targetPointCloudFileIndex].LoadCloud();
+
     Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(scans[sourcePointCloudFileIndex].GetCloud(), voxelSize);
     Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(scans[targetPointCloudFileIndex].GetCloud(), voxelSize);
 
-    Eigen::Matrix4d transformationMatrix = Referee::Mapping::ComputePairwiseTransformation(scans[sourcePointCloudFileIndex].GetCloud(), scans[targetPointCloudFileIndex].GetCloud(),
-                                                                                      Referee::Mapping::TransformationComputationMethod::GlobalMatch);
+    Eigen::Matrix4d transformationMatrix = Referee::Mapping::ComputePairwiseTransformation(scans[sourcePointCloudFileIndex].GetCloud(), 
+                                                                                           scans[targetPointCloudFileIndex].GetCloud(),
+                                                                                           Referee::Mapping::TransformationComputationMethod::GlobalMatch);
 
     Referee::Mapping::Transformation transformation(transformationMatrix);
+
+    scans[sourcePointCloudFileIndex].FlushCloud();
+    scans[targetPointCloudFileIndex].FlushCloud();
     mutex.lock();
     mappingMatrix.SetTransformation(sourcePointCloudFileIndex, targetPointCloudFileIndex, transformation);
     mutex.unlock();
