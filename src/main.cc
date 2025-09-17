@@ -121,7 +121,6 @@ int main()
     std::cout << "Vertex Count: " << mappingMatrix.GetGraph().GetVertexCount() << std::endl;
     mappingMatrix.GetGraph().ComputeMinimumSpanningTree(std::get<0>(mostProbableRotation));
     double overallMeanRotation = mappingMatrix.GetOverallMeanRotation();
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr finalPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     for(int i = 0; i < mappingMatrix.GetGraph().GetMinimumSpanningTree().size(); i++)
     {
         std::pair<int, int> edge = mappingMatrix.GetGraph().GetMinimumSpanningTree()[i];
@@ -179,9 +178,9 @@ int main()
             coloredPoint.rgb = *reinterpret_cast<float*>(&rgb);
             coloredCloud->points.push_back(coloredPoint);
         }
-        *pointClouds[edge.first] += *pointClouds[edge.second];
+        *finalPointCloud += *coloredCloud;
     }
 
-    pcl::io::savePLYFile("coloredFinalPointCloud.ply", *pointClouds[std::get<0>(mostProbableRotation)]);
+    pcl::io::savePLYFile("coloredFinalPointCloud.ply", *finalPointCloud);
     return 0;
 }
