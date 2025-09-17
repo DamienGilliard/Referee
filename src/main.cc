@@ -3,9 +3,7 @@
 
 std::mutex mutex;
 // A function we will run in multiple threads
-void ComputeTransformationInThread(Eigen::Vector3d initialTranslationSource,
-                            Eigen::Vector3d initialTranslationTarget,
-                            int sourcePointCloudFileIndex,
+void ComputeTransformationInThread(int sourcePointCloudFileIndex,
                             int targetPointCloudFileIndex,
                             std::vector<Referee::Mapping::Scan> scans,
                             double voxelSize,
@@ -53,7 +51,6 @@ int main()
         std::cout << baseQuaternion.coeffs().transpose() << std::endl;
         Referee::Mapping::Pose pose = Referee::Mapping::Pose(initialTranslationVectors[i], baseQuaternion);
         Referee::Mapping::Scan scan = Referee::Mapping::Scan(pose, plyFileNames[i], 0.01);
-        Referee::Transformations::TranslatePointCloud<pcl::PointNormal>(scan.GetCloud(), initialTranslationVectors[i]);
         scans.push_back(scan);
     }
 
@@ -73,7 +70,7 @@ int main()
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredFinalPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
     // Limit the number of concurrent threads to 10
-    const int maxThreads = 10;
+    const int maxThreads = 12;
     std::vector<std::thread> threads;
     std::vector<std::tuple<int, int>> jobs;
 
