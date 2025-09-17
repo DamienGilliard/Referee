@@ -158,9 +158,7 @@ namespace Referee::Mapping
 
             /**
              * @brief Type of the global coordinate system
-
              */
-
             CoordinateSystemType __type = CoordinateSystemType::WGS84; // type of the global coordinate system
 
             /**
