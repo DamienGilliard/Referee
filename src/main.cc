@@ -7,7 +7,7 @@ void ComputeTransformationInThread(Eigen::Vector3d initialTranslationSource,
                             Eigen::Vector3d initialTranslationTarget,
                             int sourcePointCloudFileIndex,
                             int targetPointCloudFileIndex,
-                            std::vector<std::string>& sourcePointCloudFileNames,
+                            std::vector<Referee::Mapping::Scan> scans,
                             double voxelSize,
                             Referee::Mapping::MappingMatrix& mappingMatrix)
 {
@@ -61,6 +61,7 @@ int main()
     Referee::Mapping::MappingMatrix mappingMatrix(numberFiles);
     mappingMatrix.SetConnectivityMatrix(matrix);
     mappingMatrix.SetInitialPositions(initialTranslationVectors);
+    mappingMatrix.SetScans(scans);
 
     Referee::Mapping::Graph& graph = Referee::Mapping::Graph::CreateUndirectedGraph(initialTranslationVectors, matrix);
     graph.PrintGraph();
@@ -100,11 +101,9 @@ int main()
             std::cout << "Computing transformation between point cloud " << i << " and point cloud " << neighborIndex << std::endl;
 
             threads.emplace_back(ComputeTransformationInThread,
-                                 initialTranslationSource,
-                                 initialTranslationTarget,
                                  i,
                                  neighborIndex,
-                                 std::ref(plyFileNames),
+                                 scans,
                                  0.01,
                                  std::ref(mappingMatrix));
         }
