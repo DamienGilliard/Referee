@@ -155,7 +155,7 @@ namespace Referee::Mapping
             GlobalCoordinateSystem(GlobalCoordinateSystem&&) = delete; // prevent moving
 
             GlobalCoordinateSystem& operator=(GlobalCoordinateSystem&&) = delete; // prevent moving
-            
+
             ~GlobalCoordinateSystem() = default; // destructor
 
             /**
@@ -544,6 +544,7 @@ namespace Referee::Mapping
                 return this->__scans;
             }
 
+
             /**
              * @brief Getter for a scan at a given index
              * @param index Index of the scan
@@ -867,7 +868,7 @@ namespace Referee::Mapping
         GlobalMatch,
     };
 
-    
+
     /**
      * @brief enum to store the different refinement methods. Currently only ICP with normals is supported: https://doi.org/10.1109/ICRA40945.2019.8793880
     */
