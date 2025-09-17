@@ -131,28 +131,53 @@ int main()
     for(int i = mappingMatrix.GetGraph().GetMinimumSpanningTree().size() - 1; i >= 0; i--)
     {
         std::pair<int, int> edge = mappingMatrix.GetGraph().GetMinimumSpanningTree()[i];
-        std::vector<int> subTree = mappingMatrix.GetGraph().ExtractMSTSubTree(i);
-        std::cout << "Subtree: ";
-        for (int j = 0; j < subTree.size(); j++)
-        {
-            std::cout << subTree[j] << " ";
-        }
-        Eigen::Matrix4d resetRotations = Eigen::Matrix4d::Identity();
-        resetRotations.block<3,3>(0,0) = Eigen::AngleAxisd(-overallMeanRotation, Eigen::Vector3d::UnitZ()).toRotationMatrix();
-        Eigen::Matrix4d initialTranslation = Eigen::Matrix4d::Identity();
-        Eigen::Matrix4d reversedInitialTranslation = Eigen::Matrix4d::Identity();
-        initialTranslation.block<3,1>(0,3) = initialTranslationVectors[edge.first];
-        reversedInitialTranslation.block<3,1>(0,3) = -initialTranslationVectors[edge.first];
+        Eigen::Matrix4d transformation = mappingMatrix.GetTransformation(edge.second, edge.first).GetTransformationMatrix();
+        std::cout << "[DEBUG] From point cloud " << edge.second << " to point cloud " << edge.first << ": " << std::endl << transformation << std::endl;
 
-        Eigen::Matrix4d transformation = initialTranslation * resetRotations * reversedInitialTranslation;
-        Referee::Transformations::TransformPointCloud<pcl::PointNormal>(scans[edge.second].GetCloud(), transformation);
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        pcl::copyPointCloud(*scans[edge.second].GetCloud(), *coloredPointCloud);
-        for (int j = 0; j < coloredPointCloud->size(); j++)
+        // apply the transformation to all the point clouds in the subtree
+        for(int j = 0; j < mappingMatrix.GetGraph().ExtractMSTSubTree(edge.second).size(); j++)
         {
-            pointClouds[edge.second]->points[j].r = 50 + (double)200 * ((double)i/(double)(numberFiles-1));
-            pointClouds[edge.second]->points[j].g = 0;
-            pointClouds[edge.second]->points[j].b = 250 - (double)200 * ((double)i/(double)(numberFiles-1));
+            int indexInSubtree = mappingMatrix.GetGraph().ExtractMSTSubTree(edge.second)[j];
+            mappingMatrix.GetScan(indexInSubtree).LoadCloud();
+            mappingMatrix.GetScan(indexInSubtree).TransformScan(transformation);
+            Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(mappingMatrix.GetScan(indexInSubtree).GetCloud(), 0.03);
+        }
+
+        // compute the umeyama transformation to align the subtree with the initial positions
+        Eigen::Matrix4d umeyamaTransformation = mappingMatrix.ComputeUmeyamaTransformationInSubtree(edge.first);
+        std::cout << "[DEBUG] Umeyama transformation for subtree rooted at point cloud " << edge.second << ": " << std::endl << umeyamaTransformation << std::endl;
+
+        // // Apply the umeyama transformation to the root of the subtree and all its children
+        // for (int j = 0; j < mappingMatrix.GetGraph().ExtractMSTSubTree(edge.second).size(); j++)
+        // {
+        //     int indexInSubtree = mappingMatrix.GetGraph().ExtractMSTSubTree(edge.second)[j];
+        //     mappingMatrix.GetScans()[indexInSubtree].TransformScan(umeyamaTransformation);
+        // }
+    }
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr finalPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    std::vector<int> MSTOrder;
+    for(std::pair<long unsigned int, long unsigned int> edge : mappingMatrix.GetGraph().GetMinimumSpanningTree())
+    {
+        MSTOrder.push_back(edge.second);
+    }
+    MSTOrder.push_back(mappingMatrix.GetGraph().GetMinimumSpanningTree().back().first); // add the root of the MST at the end
+    for(int i : MSTOrder)
+    {
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        pcl::PointCloud<pcl::PointNormal>::Ptr transformedCloud = mappingMatrix.GetScan(i).GetCloud();
+        for(int j = 0; j < transformedCloud->size(); j++)
+        {
+            pcl::PointNormal point = transformedCloud->points[j];
+            pcl::PointXYZRGB coloredPoint;
+            coloredPoint.x = point.x;
+            coloredPoint.y = point.y;
+            coloredPoint.z = point.z;
+            uint8_t r = (((i+1) * 20) % 256);
+            uint8_t g = (((i+1) * 40) % 256);
+            uint8_t b = (((i+1) * 10) % 256);
+            uint32_t rgb = (static_cast<uint32_t>(r) << 16 | static_cast<uint32_t>(g) << 8 | static_cast<uint32_t>(b));
+            coloredPoint.rgb = *reinterpret_cast<float*>(&rgb);
+            coloredCloud->points.push_back(coloredPoint);
         }
         *pointClouds[edge.first] += *pointClouds[edge.second];
     }
