@@ -249,7 +249,7 @@ namespace Referee::Mapping
 
             Pose __pose;
 
-            pcl::PointCloud<pcl::PointNormal>::Ptr __cloud = nullptr;
+            pcl::PointCloud<pcl::PointNormal>::Ptr __cloud = pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>());
 
             std::string __cloudFileName;
     };

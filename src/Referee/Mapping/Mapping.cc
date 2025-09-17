@@ -15,7 +15,7 @@ namespace Referee::Mapping
 
     void  Scan::LoadCloud()
             {
-                if(this->__cloud.size() > 0)
+                if(this->__cloud->size() > 0)
                 {
                     std::cout << "Point cloud already loaded." << std::endl;
                     return;
