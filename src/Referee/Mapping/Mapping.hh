@@ -873,6 +873,7 @@ namespace Referee::Mapping
     enum RefinementMethod
     {
         ICPNormals,
+        ICP,
     };
 
 
