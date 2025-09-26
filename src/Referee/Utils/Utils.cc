@@ -33,6 +33,8 @@ namespace Referee::Utils
             }
         }
     } // CoordinateSystem
+
+
     namespace Conversions
     {
         void ConvertLatLonAltToCartesian(double lat, double lon, double alt, double &x, double &y, double &z, CoordinateSystem::CoordinateSystem fromCoordSys, CoordinateSystem::CoordinateSystem toCoordSys)
@@ -90,6 +92,7 @@ namespace Referee::Utils
             return files;
         }
 
+
         Eigen::Vector3d GetTranslationVectorFromFile(const std::string& filePath, Referee::Utils::CoordinateSystem::CoordinateSystem coordSys)
         {
             Eigen::Vector3d translationVector;
@@ -116,6 +119,7 @@ namespace Referee::Utils
             return translationVector;
         }
 
+
         std::vector<Eigen::Vector3d> GetTranslationVectorsFromFiles(const std::vector<std::string>& filePaths, Referee::Utils::CoordinateSystem::CoordinateSystem coordSys)
         {
             std::vector<Eigen::Vector3d> translationVectors;
@@ -128,6 +132,7 @@ namespace Referee::Utils
         }
     }
     
+
     namespace Coloring
     {
         void ColorPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int r, int g, int b)
@@ -145,6 +150,8 @@ namespace Referee::Utils
             }
         }
     }
+
+
     namespace NormalCalculation
     {
         void CalculateNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, pcl::PointCloud<pcl::Normal>::Ptr normals, int k)
@@ -159,6 +166,7 @@ namespace Referee::Utils
             std::cout << "Normals calculated." << std::endl;
         }
     }
+
 
     namespace IO
     {
@@ -181,6 +189,7 @@ namespace Referee::Utils
         }
     }
 
+    
     namespace Trigonometry
     {
         std::vector<double> SolveAlKashi(Eigen::Vector3d sideA, Eigen::Vector3d sideB, Eigen::Vector3d sideC)

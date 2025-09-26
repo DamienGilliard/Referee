@@ -32,6 +32,7 @@ namespace Referee
                 LV95,   //Swiss Grid (translation of WGS84)
             };
             
+
             /**
              * @brief Class for geolocation of point clouds.
              * Contains latitude, longitude, altitude, coordinate system as well as point cloud file name.
@@ -55,29 +56,31 @@ namespace Referee
             };
         } // CoordinateSystem
 
-        /*
-        @brief Convert latitude, longitude to Cartesian coordinates (X, Y)
-        @param lat Latitude in degrees
-        @param lon Longitude in degrees
-        @param x X coordinate in meters
-        @param y Y coordinate in meters
-        @param FromCoordSys Coordinate system of input latitude and longitude
-        @param ToCoordSys Coordinate system of output coordinates
-        */
+
         namespace Conversions
         {
+            /**
+             * @brief Convert latitude, longitude to Cartesian coordinates (X, Y)
+             * @param lat Latitude in degrees
+             * @param lon Longitude in degrees
+             * @param x X coordinate in meters
+             * @param y Y coordinate in meters
+             * @param FromCoordSys Coordinate system of input latitude and longitude
+             * @param ToCoordSys Coordinate system of output coordinates
+             */
             void ConvertLatLonAltToCartesian(double lat, double lon, double alt, double &x, double &y, double &z, CoordinateSystem::CoordinateSystem fromCoordSys, CoordinateSystem::CoordinateSystem toCoordSys);
             void ConvertECEFToLatLonAlt(double x, double y, double z, double &lat, double &lon, double &alt);
         } // Conversions
 
         namespace FileIterators
         {
-            /*
-            @brief Get all files in a directory with a specific extension
-            @param directory Directory to search for files
-            @param extension File extension to search for
-            */
+            /**
+             * @brief Get all files in a directory with a specific extension
+             * @param directory Directory to search for files
+             * @param extension File extension to search for
+             */
             std::vector<std::string> GetFilesInDirectory(const std::string& directory, const std::string& extension);
+
 
             /**
              * @brief Get translation vectors from a file. This file is supposed to be a csv with as first three elements of the first line:
@@ -88,6 +91,7 @@ namespace Referee
              */
             Eigen::Vector3d GetTranslationVectorFromFile(const std::string& filePath, Referee::Utils::CoordinateSystem::CoordinateSystem coordSys);
 
+
             /**
              * @brief Get translation vectors from a vector of files. This vector is supposed to contain the paths to the files.
              * @param filePaths Vector of file paths
@@ -96,6 +100,7 @@ namespace Referee
              */
             std::vector<Eigen::Vector3d> GetTranslationVectorsFromFiles(const std::vector<std::string>& filePaths, Referee::Utils::CoordinateSystem::CoordinateSystem coordSys);
         } // FileIterators
+
 
         namespace Filtering
         {
@@ -124,6 +129,7 @@ namespace Referee
                 cropBoxFilter.filter(*cloud);
             }
             
+
             /**
              * @brief Voxelize a point cloud
              * 
@@ -143,6 +149,7 @@ namespace Referee
             }
         } // Filtering
 
+
         namespace Coloring
         {
             /**
@@ -155,9 +162,9 @@ namespace Referee
              * @param b Blue value of the color
              * @return pcl::PointCloud<pcl::PointXYZRGB>::Ptr Colored point cloud
              */
-            
             void ColorPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int r, int g, int b);
         } // Coloring
+
 
         namespace NormalCalculation
         {
@@ -170,6 +177,7 @@ namespace Referee
             void CalculateNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, pcl::PointCloud<pcl::Normal>::Ptr normals, int k);
         } // NormalCalculation
     
+
         namespace IO
         {
             /**
@@ -182,6 +190,7 @@ namespace Referee
             void SaveRotationAnglesAndStdDevs(const std::string& fileName, const std::vector<std::pair<double, double>>& meansAndStdDevs, const std::vector<double>& correctedAngles);
         }
 
+        
         namespace Trigonometry
         {
             /**

@@ -10,3 +10,6 @@
 [submodule "src/3rd_party/graaf"]
 	path = src/3rd_party/graaf
 	url = git@github.com:bobluppes/graaf.git
+[submodule "src/3rd_party/PDAL"]
+	path = src/3rd_party/PDAL
+	url = https://github.com/PDAL/PDAL
