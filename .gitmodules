@@ -13,3 +13,6 @@
 [submodule "src/3rd_party/PDAL"]
 	path = src/3rd_party/PDAL
 	url = https://github.com/PDAL/PDAL
+[submodule "src/3rd_party/json"]
+	path = src/3rd_party/json
+	url = git@github.com:nlohmann/json.git
