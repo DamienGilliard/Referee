@@ -771,6 +771,16 @@ namespace Referee::Mapping
              */
             Eigen::Matrix4d ComputeUmeyamaTransformationInSubtree(int i);
 
+
+            // IO
+
+            /**
+             * @brief Save the poses of the point clouds to a CSV file. The file will contain the initial and final poses of each point cloud.
+             * @param fileName Name of the file to save the poses to
+             */
+            void SavePosesToFile(std::string fileName);
+
+
         private:
             /**
              * @brief Mapping matrix between the point clouds, where each element is the transformation matrix between two point clouds

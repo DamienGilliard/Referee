@@ -745,6 +745,29 @@ namespace Referee::Mapping
     }
 
 
+    void MappingMatrix::SavePosesToFile(std::string fileName)
+    {
+        std::ofstream file(fileName);
+        if(!file.is_open())
+        {
+            std::cerr << "Error: Could not open file " << fileName << " for writing." << std::endl;
+            return;
+        }
+        file << "Index,OriginalX,OriginalY,OriginalZ,RegisteredX,RegisteredY,RegisteredZ,Roll,Pitch,Yaw" << std::endl;
+        for(int i = 0; i < this->__scans.size(); i++)
+        {
+            Eigen::Vector3d originalPosition = this->__initialPositions[i];
+            Eigen::Vector3d position = this->__scans[i].GetPose().GetPosition();
+            Eigen::Matrix3d rotation = this->__scans[i].GetPose().GetOrientation().toRotationMatrix();
+            Eigen::Vector3d eulerAngles = rotation.eulerAngles(0, 1, 2); // roll, pitch, yaw
+            file << i << "," << originalPosition.x() << "," << originalPosition.y() << "," << originalPosition.z() << ","
+                 << position.x() << "," << position.y() << "," << position.z() << ","
+                 << eulerAngles.x() << "," << eulerAngles.y() << "," << eulerAngles.z() << std::endl;
+        }
+        file.close();
+        std::cout << "Poses saved to file " << fileName << std::endl;
+    }
+
     std::vector<std::vector<int>> CreateConnectivityMatrix(std::vector<Eigen::Vector3d> geolocations, int knn, double maxDistance)
     {
         std::vector<std::vector<std::pair<int, double>>> distancesToOtherPcs;
