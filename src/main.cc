@@ -41,7 +41,7 @@ int main()
 
     Referee::Utils::CoordinateSystem::CoordinateSystem coordSys = Referee::Utils::CoordinateSystem::CoordinateSystem::LV95;
     std::vector<Eigen::Vector3d> initialTranslationVectors = Referee::Utils::FileIterators::GetTranslationVectorsFromFiles(geolocationFiles, coordSys);
-    Eigen::Vector3d meanTranslation =Referee::Transformations::RecenterTranslationVectors(initialTranslationVectors);
+    Eigen::Vector3d meanTranslation = Referee::Transformations::RecenterTranslationVectors(initialTranslationVectors);
 
     std::vector<Referee::Mapping::Scan> scans;
     int nFiles = initialTranslationVectors.size();
@@ -70,7 +70,7 @@ int main()
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredFinalPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
     // Limit the number of concurrent threads to 10
-    const int maxThreads = 12;
+    const int maxThreads = 8;
     std::vector<std::thread> threads;
     std::vector<std::tuple<int, int>> jobs;
 
@@ -150,13 +150,14 @@ int main()
         //     mappingMatrix.GetScans()[indexInSubtree].TransformScan(umeyamaTransformation);
         // }
     }
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr finalPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     std::vector<int> MSTOrder;
     for(std::pair<long unsigned int, long unsigned int> edge : mappingMatrix.GetGraph().GetMinimumSpanningTree())
     {
         MSTOrder.push_back(edge.second);
     }
     MSTOrder.push_back(mappingMatrix.GetGraph().GetMinimumSpanningTree().back().first); // add the root of the MST at the end
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr finalPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
     for(int i : MSTOrder)
     {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -177,7 +178,12 @@ int main()
         }
         *finalPointCloud += *coloredCloud;
     }
-
-    pcl::io::savePLYFile("coloredFinalPointCloud.ply", *finalPointCloud);
+    std::cout << "Final point cloud has " << finalPointCloud->size() << " points." << std::endl;
+    Referee::Utils::Conversions::CreateLASFromPointCloud(finalPointCloud, 
+                                                      initialTranslationVectors[mappingMatrix.GetGraph().GetMinimumSpanningTree().back().first](0) + meanTranslation(0), 
+                                                      initialTranslationVectors[mappingMatrix.GetGraph().GetMinimumSpanningTree().back().first](1) + meanTranslation(1), 
+                                                      initialTranslationVectors[mappingMatrix.GetGraph().GetMinimumSpanningTree().back().first](2) + meanTranslation(2), 
+                                                      "final_point_cloud.las",
+                                                      coordSys);
     return 0;
 }
