@@ -75,7 +75,51 @@ namespace Referee::Utils
                 std::cerr << "[From Referee::Utils::Conversions::ConvertLatLonAltToCartesian] Conversion from " << static_cast<int>(fromCoordSys) << " to " << static_cast<int>(toCoordSys) << " is currently not supported." << std::endl;
             }
         }
+
+
+        void CreateLASFromPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, 
+                                     double lon, 
+                                     double lat, 
+                                     double alt, 
+                                     const std::string& outputFilePath,
+                                     Referee::Utils::CoordinateSystem::CoordinateSystem coordSys)
+        {
+            pcl::io::savePLYFileBinary("temp_cloud.ply", *cloud);
+            std::string matrix = "1 0 0 " + std::to_string(lon) +
+                    " 0 1 0 " + std::to_string(lat) +
+                    " 0 0 1 " + std::to_string(alt) +
+                    " 0 0 0 1";
+
+            nlohmann::json pipeline = {
+                {"pipeline", {
+                    {
+                        {"type", "readers.ply"},
+                        {"filename", "temp_cloud.ply"}
+                    },
+                    {
+                        {"type", "filters.transformation"},
+                        {"matrix", matrix}
+                    },
+                    {
+                        {"type", "writers.las"},
+                        {"filename", outputFilePath},
+                        {"a_srs", "EPSG:2056"}
+                    }
+                }}
+            };
+            std::string pipelineStr = pipeline.dump();
+
+            std::ofstream pipelineFile("pipeline.json");
+            pipelineFile << pipelineStr; // pipelineStr is your JSON string
+            pipelineFile.close();
+
+            pdal::PipelineManager manager;
+            manager.readPipeline("pipeline.json");
+            manager.execute();
+        }
     }
+
+
     namespace FileIterators
     {
         std::vector<std::string> GetFilesInDirectory(const std::string& directory, const std::string& extension)
@@ -189,7 +233,7 @@ namespace Referee::Utils
         }
     }
 
-    
+
     namespace Trigonometry
     {
         std::vector<double> SolveAlKashi(Eigen::Vector3d sideA, Eigen::Vector3d sideB, Eigen::Vector3d sideC)

@@ -13,6 +13,10 @@
 #include <pcl/features/normal_3d.h>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
+#include <pcl/io/ply_io.h>
+#include <pdal/PipelineManager.hpp>
+#include <pdal/StageFactory.hpp>
+#include "../../3rd_party/json/single_include/nlohmann/json.hpp"
 
 namespace Referee 
 {
@@ -70,6 +74,22 @@ namespace Referee
              */
             void ConvertLatLonAltToCartesian(double lat, double lon, double alt, double &x, double &y, double &z, CoordinateSystem::CoordinateSystem fromCoordSys, CoordinateSystem::CoordinateSystem toCoordSys);
             void ConvertECEFToLatLonAlt(double x, double y, double z, double &lat, double &lon, double &alt);
+
+            /**
+             * @brief Create a LAS file from a point cloud
+             * @param cloud Point cloud to convert
+             * @param lon Longitude of the point cloud
+             * @param lat Latitude of the point cloud
+             * @param alt Altitude of the point cloud
+             * @param outputFilePath Path to the output LAS file
+             * @param coordSys Coordinate system of the output LAS file (default: LV95)
+             */
+            void CreateLASFromPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, 
+                                         double lon, 
+                                         double lat, 
+                                         double alt, 
+                                         const std::string& outputFilePath,
+                                         Referee::Utils::CoordinateSystem::CoordinateSystem coordSys = Referee::Utils::CoordinateSystem::CoordinateSystem::LV95);
         } // Conversions
 
         namespace FileIterators
@@ -190,7 +210,7 @@ namespace Referee
             void SaveRotationAnglesAndStdDevs(const std::string& fileName, const std::vector<std::pair<double, double>>& meansAndStdDevs, const std::vector<double>& correctedAngles);
         }
 
-        
+
         namespace Trigonometry
         {
             /**
