@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
+include(ExternalProject)
 
 if(POLICY CMP0079)
     cmake_policy(SET CMP0079 NEW)
@@ -35,6 +36,9 @@ add_subdirectory(Referee)
 # 3rd party libraries paths
 ###################################
 
+# # eigen
+# include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/eigen)
+
 # OpenMPI
 include_directories(/usr/lib/x86_64-linux-gnu/openmpi/include)
 
@@ -63,6 +67,13 @@ set(BUILD_TESTING ${SAVED_BUILD_TESTING})
 # # to make sure GDAL is built before referee is linked (had some issues with this)
 # add_dependencies(${SHARED_LIB_NAME} GDAL)
 target_link_libraries(${SHARED_LIB_NAME} ${PCL_LIBRARIES} GlobalMatch GDAL)
+
+# PDAL 
+find_package(PDAL REQUIRED)
+target_link_libraries(${SHARED_LIB_NAME} ${PDAL_LIBRARIES})
+
+#json
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/json/single_include)
 
 ############
 # Executable
