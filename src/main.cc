@@ -138,18 +138,11 @@ int main()
             mappingMatrix.GetScan(indexInSubtree).TransformScan(transformation);
             Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(mappingMatrix.GetScan(indexInSubtree).GetCloud(), 0.03);
         }
-
-        // compute the umeyama transformation to align the subtree with the initial positions
-        Eigen::Matrix4d umeyamaTransformation = mappingMatrix.ComputeUmeyamaTransformationInSubtree(edge.first);
-        std::cout << "[DEBUG] Umeyama transformation for subtree rooted at point cloud " << edge.second << ": " << std::endl << umeyamaTransformation << std::endl;
-
-        // // Apply the umeyama transformation to the root of the subtree and all its children
-        // for (int j = 0; j < mappingMatrix.GetGraph().ExtractMSTSubTree(edge.second).size(); j++)
-        // {
-        //     int indexInSubtree = mappingMatrix.GetGraph().ExtractMSTSubTree(edge.second)[j];
-        //     mappingMatrix.GetScans()[indexInSubtree].TransformScan(umeyamaTransformation);
-        // }
     }
+
+    Eigen::Matrix4d umeyamaTransformation = mappingMatrix.ComputeUmeyamaTransformationInSubtree(0);
+    std::cout << "[DEBUG] final Umeyama transformation: " << std::endl << umeyamaTransformation << std::endl;
+
     std::vector<int> MSTOrder;
     for(std::pair<long unsigned int, long unsigned int> edge : mappingMatrix.GetGraph().GetMinimumSpanningTree())
     {
@@ -161,6 +154,7 @@ int main()
     for(int i : MSTOrder)
     {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        mappingMatrix.GetScan(i).TransformScan(umeyamaTransformation);
         pcl::PointCloud<pcl::PointNormal>::Ptr transformedCloud = mappingMatrix.GetScan(i).GetCloud();
         for(int j = 0; j < transformedCloud->size(); j++)
         {
@@ -177,9 +171,9 @@ int main()
             coloredCloud->points.push_back(coloredPoint);
         }
         Referee::Utils::Conversions::CreateLASFromPointCloud(coloredCloud, 
-                                                      initialTranslationVectors[i](0) + meanTranslation(0), 
-                                                      initialTranslationVectors[i](1) + meanTranslation(1), 
-                                                      initialTranslationVectors[i](2) + meanTranslation(2), 
+                                                      initialTranslationVectors[mappingMatrix.GetGraph().GetMinimumSpanningTree().back().first](0) + meanTranslation(0), 
+                                                      initialTranslationVectors[mappingMatrix.GetGraph().GetMinimumSpanningTree().back().first](1) + meanTranslation(1), 
+                                                      initialTranslationVectors[mappingMatrix.GetGraph().GetMinimumSpanningTree().back().first](2) + meanTranslation(2), 
                                                       "intermediate_point_cloud_" + std::to_string(i) + ".las",
                                                       coordSys);
         *finalPointCloud += *coloredCloud;
