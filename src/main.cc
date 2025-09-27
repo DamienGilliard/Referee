@@ -176,6 +176,12 @@ int main()
             coloredPoint.rgb = *reinterpret_cast<float*>(&rgb);
             coloredCloud->points.push_back(coloredPoint);
         }
+        Referee::Utils::Conversions::CreateLASFromPointCloud(coloredCloud, 
+                                                      initialTranslationVectors[i](0) + meanTranslation(0), 
+                                                      initialTranslationVectors[i](1) + meanTranslation(1), 
+                                                      initialTranslationVectors[i](2) + meanTranslation(2), 
+                                                      "intermediate_point_cloud_" + std::to_string(i) + ".las",
+                                                      coordSys);
         *finalPointCloud += *coloredCloud;
     }
     std::cout << "Final point cloud has " << finalPointCloud->size() << " points." << std::endl;
