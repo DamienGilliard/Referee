@@ -62,9 +62,7 @@ int main()
 
     Referee::Mapping::Graph& graph = Referee::Mapping::Graph::CreateUndirectedGraph(initialTranslationVectors, matrix);
     graph.PrintGraph();
-    
-    std::vector<std::vector<Eigen::Vector3d>> computedTranslations;
-    computedTranslations.resize(numberFiles);
+
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr targetPointCloud(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredFinalPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
