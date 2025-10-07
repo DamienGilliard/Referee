@@ -324,6 +324,13 @@ namespace Referee::Mapping
              */
             Eigen::Matrix4d GetTransformationMatrix() const { return __globalTransformation; }
 
+
+            /**
+             * @brief Get the inverse transformation matrix in the global coordinate system
+             * @return Eigen::Matrix4d inverse transformation matrix in the global coordinate system
+             */
+            Eigen::Matrix4d GetInverse() const { return __globalTransformation.inverse(); }
+
             
         private:
             
