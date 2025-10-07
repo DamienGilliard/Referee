@@ -406,6 +406,13 @@ namespace Referee::Mapping
              */
             int GetEdgeCount() const { return this->_nEdges; }
 
+
+            /**
+             * @brief Set the weight of an edge in the graph
+             */
+            void SetWeight(int vertex1, int vertex2, double weight);
+
+
             /**
              * @brief Compute the minimum spanning tree of the graph using Prim's algorithm
              * @param startVertexIndex The index of the root vertex for the algorithm
@@ -882,12 +889,12 @@ namespace Referee::Mapping
 
 
     /**
-     * @brief Computes the 4x4 transformation matrix that transforms the source point cloud to the target point cloud following a given method
+     * @brief Computes the 4x4 transformation matrix that transforms the source point cloud to the target point cloud following a given method. It also returns the score of the transformation, for example the number of correspondances used.
      * @param source the source point cloud used as reference
      * @param target the point cloud we want to transform
      * @param method the method used in the computation.  
     */
-    Eigen::Matrix4d ComputePairwiseTransformation(pcl::PointCloud<pcl::PointNormal>::Ptr source, pcl::PointCloud<pcl::PointNormal>::Ptr target, TransformationComputationMethod method);
+    std::pair<Eigen::Matrix4d, float> ComputePairwiseTransformation(pcl::PointCloud<pcl::PointNormal>::Ptr source, pcl::PointCloud<pcl::PointNormal>::Ptr target, TransformationComputationMethod method);
 
 
     /**

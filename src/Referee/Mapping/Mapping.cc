@@ -116,12 +116,23 @@ namespace Referee::Mapping
 
     void Graph::AddEdge(Eigen::Vector3d vertex1, 
                         Eigen::Vector3d vertex2, 
-                        double distance)
+                        double weight)
     {
         int index1 = this->__vertexIndices[vertex1];
         int index2 = this->__vertexIndices[vertex2];
-        __undirectedGraph.add_edge(index1, index2, distance);
+        __undirectedGraph.add_edge(index1, index2, weight);
         this->_nEdges++;
+    }
+
+
+    void Graph::SetWeight(int vertex1, int vertex2, double weight)
+    {
+        if(!this->__undirectedGraph.has_edge(vertex1, vertex2))
+        {
+            std::cerr << "Error: Trying to set weight of a non-existing edge." << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        this->__undirectedGraph.get_edge(vertex1, vertex2) = weight;
     }
 
 
@@ -822,9 +833,10 @@ namespace Referee::Mapping
     }
 
 
-    Eigen::Matrix4d ComputePairwiseTransformation(pcl::PointCloud<pcl::PointNormal>::Ptr source, pcl::PointCloud<pcl::PointNormal>::Ptr target, TransformationComputationMethod method)
+    std::pair<Eigen::Matrix4d, float> ComputePairwiseTransformation(pcl::PointCloud<pcl::PointNormal>::Ptr source, pcl::PointCloud<pcl::PointNormal>::Ptr target, TransformationComputationMethod method)
     {
         Eigen::Matrix4f transformation = Eigen::Matrix4f::Identity();
+        float score;
 
         if(method == TransformationComputationMethod::GlobalMatch)
         {
@@ -856,7 +868,7 @@ namespace Referee::Mapping
             globalMatchMapping.extract(targetPosCloud);
             GlobalMatch::Matching::Matching globalMatchMatching;
             globalMatchMatching.setPairwiseStemPositions(sourcePosCloud, targetPosCloud);
-            globalMatchMatching.estimateTransformation(transformation);
+            score = globalMatchMatching.estimateTransformation(transformation);
         }
         else
         {
@@ -873,7 +885,7 @@ namespace Referee::Mapping
             }
         }
 
-        return transformationDouble;
+        return {transformationDouble, score};
     }
 
 
