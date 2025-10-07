@@ -137,11 +137,17 @@ int main()
             Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(mappingMatrix.GetScan(indexInSubtree).GetCloud(), 0.03);
         }
     }
+    // also load the root of the MST
+    mappingMatrix.GetScan(mappingMatrix.GetGraph().GetMinimumSpanningTree()[0].first).LoadCloud();
+    Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(
+        mappingMatrix.GetScan(mappingMatrix.GetGraph().GetMinimumSpanningTree()[0].first).GetCloud(),
+        0.03);
 
     Eigen::Matrix4d umeyamaTransformation = mappingMatrix.ComputeUmeyamaTransformationInSubtree(0);
     std::cout << "[DEBUG] final Umeyama transformation: " << std::endl << umeyamaTransformation << std::endl;
 
     std::vector<int> MSTOrder;
+    MSTOrder.push_back(mappingMatrix.GetGraph().GetMinimumSpanningTree()[0].first); // add the root of the MST at the beginning
     for(std::pair<long unsigned int, long unsigned int> edge : mappingMatrix.GetGraph().GetMinimumSpanningTree())
     {
         MSTOrder.push_back(edge.second);
