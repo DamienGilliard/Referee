@@ -256,7 +256,7 @@ namespace Referee::Mapping
 
 
     /**
-     * @brief This class stores a transformation in 3D in the form of a rotation axis, a point on this axis, a rotation along this axis, and a translation along this axis.
+     * @brief This class stores a transformation in 3D in the form of a rotation axis, a point on this axis, a rotation along this axis, and a translation along this axis. It also stores a score for the transformation (for example the number of correspondance used)
      */
     class Transformation
     {
@@ -266,7 +266,8 @@ namespace Referee::Mapping
             
             Transformation(Eigen::Matrix4d transformationMatrixInGlobalCoordinateSystem,
                            std::shared_ptr<Scan> fromScan = nullptr,
-                           std::shared_ptr<Scan> toScan = nullptr);
+                           std::shared_ptr<Scan> toScan = nullptr,
+                           float score = 0.0);
 
             /**
              * @brief Print the transformation to the console
@@ -337,6 +338,8 @@ namespace Referee::Mapping
             std::shared_ptr<Scan> __fromScan = nullptr; // pointer to the scan from which the transformation is computed
 
             std::shared_ptr<Scan> __toScan = nullptr; // pointer to the scan to which the transformation is computed
+
+            float __score = 0.0; // score of the transformation (for example the number of correspondance used)
     };
 
 

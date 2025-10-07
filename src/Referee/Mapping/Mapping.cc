@@ -32,10 +32,12 @@ namespace Referee::Mapping
 
     Transformation::Transformation(Eigen::Matrix4d transformationMatrixInGlobalCoordinateSystem,
                            std::shared_ptr<Scan> fromScan,
-                           std::shared_ptr<Scan> toScan)
+                           std::shared_ptr<Scan> toScan,
+                           float score)
         : __globalTransformation(transformationMatrixInGlobalCoordinateSystem),
           __fromScan(fromScan),
-          __toScan(toScan)
+          __toScan(toScan),
+          __score(score)
     {
         Eigen::Matrix3d rotationMatrix = transformationMatrixInGlobalCoordinateSystem.block<3, 3>(0, 0);
         Eigen::AngleAxisd angleAxis(rotationMatrix);
