@@ -731,8 +731,8 @@ namespace Referee::Mapping
         }
         std::cout << std::endl;
 
-        Eigen::MatrixXd sourcePoints(3, subtreeIndices.size());
-        Eigen::MatrixXd targetPoints(3, subtreeIndices.size());
+        Eigen::MatrixXd sourcePoints(2, subtreeIndices.size());
+        Eigen::MatrixXd targetPoints(2, subtreeIndices.size());
         if(subtreeIndices.size() > 1)
         {
             for (size_t k = 0; k < subtreeIndices.size(); ++k) 
@@ -740,8 +740,10 @@ namespace Referee::Mapping
                 int subtreeIndex = subtreeIndices[k];
                 Eigen::Vector3d sourcePoint = this->GetScan(subtreeIndex).GetPose().GetPosition();
                 Eigen::Vector3d targetPoint = this->GetInitialPosition(subtreeIndex);
-                sourcePoints.col(k) = sourcePoint;
-                targetPoints.col(k) = targetPoint;
+                sourcePoints(0, k) = sourcePoint.x();
+                sourcePoints(1, k) = sourcePoint.y();
+                targetPoints(0, k) = targetPoint.x();
+                targetPoints(1, k) = targetPoint.y();
             }
         }
         else
@@ -749,11 +751,22 @@ namespace Referee::Mapping
             std::cerr << "Error: Subtree has only one node, cannot compute Umeyama transformation." << std::endl;
             return Eigen::Matrix4d::Identity();
         }
-        std::cout << "[DEBUG] Source points: " << std::endl << sourcePoints << std::endl;
-        std::cout << "[DEBUG] Target points: " << std::endl << targetPoints << std::endl;
-        
-        Eigen::Matrix4d umeyamaTransformation = Eigen::umeyama(sourcePoints, targetPoints, false);
-        
+        std::cout << "[DEBUG] Source points (2D): " << std::endl << sourcePoints << std::endl;
+        std::cout << "[DEBUG] Target points (2D): " << std::endl << targetPoints << std::endl;
+
+        // Compute 2D Umeyama transformation -> altitudes are ignored because unreliable
+        Eigen::Matrix3d umeyama2D = Eigen::umeyama(sourcePoints, targetPoints, false);
+
+        Eigen::Matrix4d umeyamaTransformation = Eigen::Matrix4d::Identity();
+        double cos_theta = umeyama2D(0,0);
+        double sin_theta = umeyama2D(1,0);
+        umeyamaTransformation(0,0) = cos_theta;
+        umeyamaTransformation(0,1) = -sin_theta;
+        umeyamaTransformation(1,0) = sin_theta;
+        umeyamaTransformation(1,1) = cos_theta;
+        umeyamaTransformation(0,3) = umeyama2D(0,2);
+        umeyamaTransformation(1,3) = umeyama2D(1,2);
+
         return umeyamaTransformation;
     }
 
