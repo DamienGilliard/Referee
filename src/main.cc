@@ -175,18 +175,18 @@ int main()
             coloredCloud->points.push_back(coloredPoint);
         }
         Referee::Utils::Conversions::CreateLASFromPointCloud(coloredCloud, 
-                                                      initialTranslationVectors[mappingMatrix.GetGraph().GetMinimumSpanningTree().back().first](0) + meanTranslation(0), 
-                                                      initialTranslationVectors[mappingMatrix.GetGraph().GetMinimumSpanningTree().back().first](1) + meanTranslation(1), 
-                                                      initialTranslationVectors[mappingMatrix.GetGraph().GetMinimumSpanningTree().back().first](2) + meanTranslation(2), 
+                                                      meanTranslation(0), 
+                                                      meanTranslation(1), 
+                                                      meanTranslation(2), 
                                                       "intermediate_point_cloud_" + std::to_string(i) + ".las",
                                                       coordSys);
         *finalPointCloud += *coloredCloud;
     }
     std::cout << "Final point cloud has " << finalPointCloud->size() << " points." << std::endl;
     Referee::Utils::Conversions::CreateLASFromPointCloud(finalPointCloud, 
-                                                      initialTranslationVectors[mappingMatrix.GetGraph().GetMinimumSpanningTree().back().first](0) + meanTranslation(0), 
-                                                      initialTranslationVectors[mappingMatrix.GetGraph().GetMinimumSpanningTree().back().first](1) + meanTranslation(1), 
-                                                      initialTranslationVectors[mappingMatrix.GetGraph().GetMinimumSpanningTree().back().first](2) + meanTranslation(2), 
+                                                      meanTranslation(0), 
+                                                      meanTranslation(1), 
+                                                      meanTranslation(2), 
                                                       "final_point_cloud.las",
                                                       coordSys);
     return 0;
