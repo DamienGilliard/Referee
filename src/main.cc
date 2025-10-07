@@ -25,6 +25,7 @@ void ComputeTransformationInThread(int sourcePointCloudFileIndex,
     scans[targetPointCloudFileIndex].FlushCloud();
     mutex.lock();
     mappingMatrix.SetTransformation(sourcePointCloudFileIndex, targetPointCloudFileIndex, transformation);
+    mappingMatrix.SetTransformation(targetPointCloudFileIndex, sourcePointCloudFileIndex, transformation.GetInverse());
     mutex.unlock();
 }
 
