@@ -224,6 +224,28 @@ namespace Referee::Mapping
         }
     }
 
+    
+    std::vector<std::pair<long unsigned int, long unsigned int>> Graph::GetNonMSTEdges()
+    {
+        std::vector<std::pair<long unsigned int, long unsigned int>> nonMSTEdges;
+        std::unordered_set<std::pair<long unsigned int, long unsigned int>, boost::hash<std::pair<long unsigned int, long unsigned int>>> mstEdgeSet;
+        for (const auto& edge : this->__minimumSpanningTree) 
+        {
+            mstEdgeSet.insert(edge);
+            mstEdgeSet.insert(std::make_pair(edge.second, edge.first)); // because undirected
+        }
+
+        for (const std::pair<std::pair<long unsigned int, long unsigned int>,double>& edgeAndWeight : this->__undirectedGraph.get_edges()) 
+        {
+            const auto& edge = edgeAndWeight.first;
+            std::pair<long unsigned int, long unsigned int> edgePair = std::make_pair(edge.first, edge.second);
+            if (mstEdgeSet.find(edgePair) == mstEdgeSet.end()) {
+                nonMSTEdges.push_back(edgePair);
+            }
+        }
+        return nonMSTEdges;
+    }
+
 
     Graph* Graph::__instance = nullptr;
 
