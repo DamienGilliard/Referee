@@ -151,7 +151,20 @@ namespace Referee::Mapping
             return {};
         }
         std::vector<std::pair<long unsigned int, long unsigned int>> mstEdges = mstEdgesOpt.value();
-        this->__minimumSpanningTree = mstEdges;
+        this->__minimumSpanningTreeEdges = mstEdges;
+        this->__minimumSpanningTree = graaf::undirected_graph<int, double>();
+        for (const auto& edge : mstEdges) {
+            std::cout << "Adding edge to minimum spanning tree: " << edge.first << " - " << edge.second << std::endl;
+            if (!this->__minimumSpanningTree.has_vertex(edge.first)) 
+            {
+                this->__minimumSpanningTree.add_vertex(this->__undirectedGraph.get_vertex(edge.first), edge.first);
+            }
+            if (!this->__minimumSpanningTree.has_vertex(edge.second)) 
+            {
+                this->__minimumSpanningTree.add_vertex(this->__undirectedGraph.get_vertex(edge.second), edge.second);
+            }
+            this->__minimumSpanningTree.add_edge(edge.first, edge.second, this->__undirectedGraph.get_edge(edge.first, edge.second));
+        }
         return mstEdges;
     }
 
@@ -176,7 +189,7 @@ namespace Referee::Mapping
     {
         // 1. Build the MST as an adjacency list
         std::unordered_map<int, std::vector<int>> mst_adj;
-        for (const auto& edge : this->__minimumSpanningTree) {
+        for (const auto& edge : this->__minimumSpanningTreeEdges) {
             int u = edge.first;
             int v = edge.second;
             mst_adj[u].push_back(v);
@@ -229,7 +242,7 @@ namespace Referee::Mapping
     {
         std::vector<std::pair<long unsigned int, long unsigned int>> nonMSTEdges;
         std::unordered_set<std::pair<long unsigned int, long unsigned int>, boost::hash<std::pair<long unsigned int, long unsigned int>>> mstEdgeSet;
-        for (const auto& edge : this->__minimumSpanningTree) 
+        for (const auto& edge : this->__minimumSpanningTreeEdges) 
         {
             mstEdgeSet.insert(edge);
             mstEdgeSet.insert(std::make_pair(edge.second, edge.first)); // because undirected
@@ -244,6 +257,34 @@ namespace Referee::Mapping
             }
         }
         return nonMSTEdges;
+    }
+
+    std::vector<std::vector<std::pair<long unsigned int, long unsigned int>>> Graph::GetCorrectionLoops()
+    {
+        std::vector<std::vector<std::pair<long unsigned int, long unsigned int>>> correctionLoops;
+        std::vector<std::pair<long unsigned int, long unsigned int>> nonMSTEdges = this->GetNonMSTEdges();
+
+        for(std::pair<long unsigned int, long unsigned int> edge : nonMSTEdges)
+        {
+            std::vector<std::pair<long unsigned int, long unsigned int>> correctionLoop;
+            auto pathOpt = graaf::algorithm::bfs_shortest_path(this->__minimumSpanningTree, edge.first, edge.second);
+            if(pathOpt)
+            {
+                std::cout << "[DEBUG] Correction loop found between vertices " << edge.first << " and " << edge.second << ": ";
+                for(auto vertex : pathOpt.value().vertices)
+                {
+                    std::cout << vertex << " ";
+                }
+                std::cout << std::endl;
+                correctionLoop.push_back(edge);
+            }
+            else
+            {
+                std::cerr << "Error: No path found in MST between vertices " << edge.first << " and " << edge.second << std::endl;
+            }
+            correctionLoops.push_back(correctionLoop);
+        }
+        return correctionLoops;
     }
 
 

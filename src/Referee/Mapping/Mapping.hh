@@ -20,6 +20,7 @@
 #include <graaflib/edge.h>
 #include <graaflib/io/dot.h>
 #include <graaflib/algorithm/minimum_spanning_tree/prim.h>
+#include <graaflib/algorithm/shortest_path/bfs_shortest_path.h>
 
 #include "../../3rd_party/GlobalMatch/code/global_match/stem_mapping.h"
 #include "../../3rd_party/GlobalMatch/code/global_match/stem_matching.h"
@@ -450,7 +451,7 @@ namespace Referee::Mapping
              */
             std::vector<std::pair<long unsigned int, long unsigned int>> GetMinimumSpanningTree()
             {
-                return this->__minimumSpanningTree;
+                return this->__minimumSpanningTreeEdges;
             }
 
 
@@ -460,6 +461,17 @@ namespace Referee::Mapping
              * @return A vector of edges not in the minimum spanning tree
              */
             std::vector<std::pair<long unsigned int, long unsigned int>> GetNonMSTEdges();
+
+
+            /**
+             * @brief in the minimum spanning tree graph, we find the shortest path between the vertices of the edges that are not part of the minimum spanning tree. 
+             * These paths form correction loops that can be used to correct drift in the transformations.
+             * Because we work within a tree, there will be only one unique path between two vertices, and we can use
+             * a BFS algorithm to find this path (does not use edge weights). Docu: https://bobluppes.github.io/graaf/docs/algorithms/shortest-path/bfs-based-shortest-path
+             * 
+             * @return A vector of pairs representing the correction loops
+             */
+            std::vector<std::vector<std::pair<long unsigned int, long unsigned int>>> GetCorrectionLoops();
 
 
         private:
@@ -486,7 +498,9 @@ namespace Referee::Mapping
 
             graaf::undirected_graph<int, double> __undirectedGraph; // Undirected graph to store the connectivity between the point clouds
 
-            std::vector<std::pair<long unsigned int, long unsigned int>> __minimumSpanningTree; // Minimum spanning tree of the graph, stored as a vector of edges (pairs of vertex indices)
+            graaf::undirected_graph<int, double> __minimumSpanningTree; // Minimum spanning tree of the graph
+            
+            std::vector<std::pair<long unsigned int, long unsigned int>> __minimumSpanningTreeEdges; // edges of the minimum spanning tree of the graph, stored as a vector of edges (pairs of vertex indices)
     };
 
 
