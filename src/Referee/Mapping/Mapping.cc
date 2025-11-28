@@ -154,7 +154,6 @@ namespace Referee::Mapping
         this->__minimumSpanningTreeEdges = mstEdges;
         this->__minimumSpanningTree = graaf::undirected_graph<int, double>();
         for (const auto& edge : mstEdges) {
-            std::cout << "Adding edge to minimum spanning tree: " << edge.first << " - " << edge.second << std::endl;
             if (!this->__minimumSpanningTree.has_vertex(edge.first)) 
             {
                 this->__minimumSpanningTree.add_vertex(this->__undirectedGraph.get_vertex(edge.first), edge.first);
