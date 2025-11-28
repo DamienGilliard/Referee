@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <queue>
+#include <utility>
+#include <boost/functional/hash.hpp>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -450,6 +452,14 @@ namespace Referee::Mapping
             {
                 return this->__minimumSpanningTree;
             }
+
+
+            /**
+             * @brief gets the graph edges that do not belong to the minimum spanning tree
+             * 
+             * @return A vector of edges not in the minimum spanning tree
+             */
+            std::vector<std::pair<long unsigned int, long unsigned int>> GetNonMSTEdges();
 
 
         private:
