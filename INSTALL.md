@@ -7,8 +7,18 @@ To install PCL system-wide on your computer, follow those steps:
 in a terminal run:
 `sudo apt-get install build-essential libeigen3-dev libflann-dev libusb-1.0-0-dev libopenni-dev libopenni2-dev libpng-dev libqhull-dev zlib1g-dev libpcap-dev freeglut3-dev libboost-all-dev libvtk9-dev qtbase5-dev qtdeclarative5-dev libqt5opengl5-dev`
 
-### PCL
+### PCL 1.15.0
 Then, follow the instructions from [pcl](https://pcl.readthedocs.io/projects/tutorials/en/latest/compiling_pcl_posix.html) to install it.
+
+### PROJ (for GDAL)
+```bash
+sudo apt-get install libproj-dev proj-data proj-bin
+```
+
+### MPI
+```bash
+sudo apt-get install libopenmpi-dev
+```
 
 ## build
 detailed instructions for library and executables building and linking will come when the CMake project is in its "final" state, but for now, in short:
