@@ -15,11 +15,11 @@ void ComputeTransformationInThread(int sourcePointCloudFileIndex,
     Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(scans[sourcePointCloudFileIndex].GetCloud(), voxelSize);
     Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(scans[targetPointCloudFileIndex].GetCloud(), voxelSize);
 
-    Eigen::Matrix4d transformationMatrix = Referee::Mapping::ComputePairwiseTransformation(scans[sourcePointCloudFileIndex].GetCloud(), 
+    std::pair<Eigen::Matrix4d, float> transformationMatrixAndScore = Referee::Mapping::ComputePairwiseTransformation(scans[sourcePointCloudFileIndex].GetCloud(),
                                                                                            scans[targetPointCloudFileIndex].GetCloud(),
                                                                                            Referee::Mapping::TransformationComputationMethod::GlobalMatch);
-
-    Referee::Mapping::Transformation transformation(transformationMatrix);
+    mappingMatrix.GetGraph().SetWeight(sourcePointCloudFileIndex, targetPointCloudFileIndex, -transformationMatrixAndScore.second);
+    Referee::Mapping::Transformation transformation(transformationMatrixAndScore.first, nullptr, nullptr, transformationMatrixAndScore.second);
 
     scans[sourcePointCloudFileIndex].FlushCloud();
     scans[targetPointCloudFileIndex].FlushCloud();
@@ -43,6 +43,7 @@ int main()
     Referee::Utils::CoordinateSystem::CoordinateSystem coordSys = Referee::Utils::CoordinateSystem::CoordinateSystem::LV95;
     std::vector<Eigen::Vector3d> initialTranslationVectors = Referee::Utils::FileIterators::GetTranslationVectorsFromFiles(geolocationFiles, coordSys);
     Eigen::Vector3d meanTranslation = Referee::Transformations::RecenterTranslationVectors(initialTranslationVectors);
+    std::cout << "Mean translation vector: " << std::setprecision(15) << meanTranslation.transpose() << std::endl;
 
     std::vector<Referee::Mapping::Scan> scans;
     int nFiles = initialTranslationVectors.size();
@@ -68,7 +69,7 @@ int main()
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredFinalPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
     // Limit the number of concurrent threads to 10
-    const int maxThreads = 8;
+    const int maxThreads = 16;
     std::vector<std::thread> threads;
     std::vector<std::tuple<int, int>> jobs;
 
@@ -114,7 +115,8 @@ int main()
 
     std::tuple<int, double> mostProbableRotation = mappingMatrix.GetMostProbableRotation();
     std::cout << "Vertex Count: " << mappingMatrix.GetGraph().GetVertexCount() << std::endl;
-    mappingMatrix.GetGraph().ComputeMinimumSpanningTree(std::get<0>(mostProbableRotation));
+    mappingMatrix.GetGraph().PrintGraph();
+    mappingMatrix.GetGraph().ComputeMinimumSpanningTree(0);
     double overallMeanRotation = mappingMatrix.GetOverallMeanRotation();
     for(int i = 0; i < mappingMatrix.GetGraph().GetMinimumSpanningTree().size(); i++)
     {
@@ -132,34 +134,38 @@ int main()
         for(int j = 0; j < mappingMatrix.GetGraph().ExtractMSTSubTree(edge.second).size(); j++)
         {
             int indexInSubtree = mappingMatrix.GetGraph().ExtractMSTSubTree(edge.second)[j];
+            std::cout << "[DEBUG] Applying transformation to point cloud " << indexInSubtree << std::endl;
             mappingMatrix.GetScan(indexInSubtree).LoadCloud();
             mappingMatrix.GetScan(indexInSubtree).TransformScan(transformation);
-            Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(mappingMatrix.GetScan(indexInSubtree).GetCloud(), 0.03);
+            Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(
+                mappingMatrix.GetScan(indexInSubtree).GetCloud(), 0.015);
         }
     }
     // also load the root of the MST
     mappingMatrix.GetScan(mappingMatrix.GetGraph().GetMinimumSpanningTree()[0].first).LoadCloud();
     Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(
         mappingMatrix.GetScan(mappingMatrix.GetGraph().GetMinimumSpanningTree()[0].first).GetCloud(),
-        0.03);
+        0.015);
 
     Eigen::Matrix4d umeyamaTransformation = mappingMatrix.ComputeUmeyamaTransformationInSubtree(0);
     std::cout << "[DEBUG] final Umeyama transformation: " << std::endl << umeyamaTransformation << std::endl;
 
+    auto catcher = mappingMatrix.GetGraph().GetCorrectionLoops();
     std::vector<int> MSTOrder;
     MSTOrder.push_back(mappingMatrix.GetGraph().GetMinimumSpanningTree()[0].first); // add the root of the MST at the beginning
     for(std::pair<long unsigned int, long unsigned int> edge : mappingMatrix.GetGraph().GetMinimumSpanningTree())
     {
         MSTOrder.push_back(edge.second);
     }
-    MSTOrder.push_back(mappingMatrix.GetGraph().GetMinimumSpanningTree().back().first); // add the root of the MST at the end
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr finalPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
+    int count = 0;
     for(int i : MSTOrder)
     {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         mappingMatrix.GetScan(i).TransformScan(umeyamaTransformation);
         pcl::PointCloud<pcl::PointNormal>::Ptr transformedCloud = mappingMatrix.GetScan(i).GetCloud();
+        std::cout << "Transformed point cloud " << i << " has " << transformedCloud->size() << " points." << std::endl;
         for(int j = 0; j < transformedCloud->size(); j++)
         {
             pcl::PointNormal point = transformedCloud->points[j];
@@ -167,9 +173,9 @@ int main()
             coloredPoint.x = point.x;
             coloredPoint.y = point.y;
             coloredPoint.z = point.z;
-            uint8_t r = (((i+1) * 20) % 256);
-            uint8_t g = (((i+1) * 40) % 256);
-            uint8_t b = (((i+1) * 10) % 256);
+            uint8_t r = (((count+1) * 20) % 256);
+            uint8_t g = (((count+1) * 40) % 256);
+            uint8_t b = (((count+1) * 10) % 256);
             uint32_t rgb = (static_cast<uint32_t>(r) << 16 | static_cast<uint32_t>(g) << 8 | static_cast<uint32_t>(b));
             coloredPoint.rgb = *reinterpret_cast<float*>(&rgb);
             coloredCloud->points.push_back(coloredPoint);
@@ -181,6 +187,9 @@ int main()
                                                       "intermediate_point_cloud_" + std::to_string(i) + ".las",
                                                       coordSys);
         *finalPointCloud += *coloredCloud;
+        mappingMatrix.GetScan(i).FlushCloud();
+        coloredCloud->clear();
+        count++;
     }
     std::cout << "Final point cloud has " << finalPointCloud->size() << " points." << std::endl;
     Referee::Utils::Conversions::CreateLASFromPointCloud(finalPointCloud, 
