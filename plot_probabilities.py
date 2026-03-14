@@ -47,7 +47,7 @@ def plot_normal_distributions(means, std_devs, corrected_angles) -> None:
     
     plt.figure(figsize=(10, 6))
     plt.title('Normal Distribution Curves')
-    plt.xlabel('Rotation angle (radiants)')
+    plt.xlabel('Rotation angle (radians)')
     plt.ylabel('Probability Density')
     plt.grid()
 
