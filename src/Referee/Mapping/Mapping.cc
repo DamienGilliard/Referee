@@ -49,7 +49,10 @@ namespace Referee::Mapping
 
     void Transformation::PrintTransformation()
     {
-        std::cout << "Transformation from scan " << __fromScan->GetCloudFileName() << " to scan " << __toScan->GetCloudFileName() << std::endl;
+        const std::string fromName = __fromScan ? __fromScan->GetCloudFileName() : std::string("<unknown>");
+        const std::string toName   = __toScan   ? __toScan->GetCloudFileName()   : std::string("<unknown>");
+
+        std::cout << "Transformation from scan " << fromName << " to scan " << toName << std::endl;
         std::cout << "Rotation vector: " << __globalRotationVector.transpose() << std::endl;
         std::cout << "Rotation angle: " << __globalRotationVector.norm() << " radians" << std::endl;
         std::cout << "Translation: " << __globalTranslation.transpose() << std::endl;
