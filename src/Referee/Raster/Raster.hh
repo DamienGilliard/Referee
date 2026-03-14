@@ -1,3 +1,4 @@
+#pragma once
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <gdal_priv.h>
@@ -15,6 +16,7 @@ namespace Referee::Raster
 
             /**
              * @brief Create a GeoTIFF file from a pcl point cloud
+             * 
              * 
              * @param cloud Point cloud to convert
              * @param outputFilePath Path to the output GeoTIFF file
