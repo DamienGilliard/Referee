@@ -1,0 +1,18 @@
+[submodule "src/3rd_party/eigen"]
+	path = src/3rd_party/eigen
+	url = https://gitlab.com/libeigen/eigen.git
+[submodule "src/3rd_party/GlobalMatch"]
+	path = src/3rd_party/GlobalMatch
+	url = git@github.com:DamienGilliard/GlobalMatch.git
+[submodule "src/3rd_party/gdal"]
+	path = src/3rd_party/gdal
+	url = git@github.com:OSGeo/gdal.git
+[submodule "src/3rd_party/graaf"]
+	path = src/3rd_party/graaf
+	url = git@github.com:bobluppes/graaf.git
+[submodule "src/3rd_party/PDAL"]
+	path = src/3rd_party/PDAL
+	url = https://github.com/PDAL/PDAL
+[submodule "src/3rd_party/json"]
+	path = src/3rd_party/json
+	url = git@github.com:nlohmann/json.git

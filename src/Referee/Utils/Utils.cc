@@ -2,6 +2,39 @@
 
 namespace Referee::Utils
 {
+    namespace CoordinateSystem
+    {
+        void PointCloudGeolocation::WriteToGeojson()
+        {
+            std::ofstream geojsonFile(fileName + ".geojson");
+            if (geojsonFile.is_open())
+            {
+                geojsonFile << "{\n";
+                geojsonFile << "  \"type\": \"FeatureCollection\",\n";
+                geojsonFile << "  \"features\": [\n";
+                geojsonFile << "    {\n";
+                geojsonFile << "      \"type\": \"Feature\",\n";
+                geojsonFile << "      \"geometry\": {\n";
+                geojsonFile << "        \"type\": \"Point\",\n";
+                geojsonFile << "        \"coordinates\": [" << lon << ", " << lat << ", " << alt << "]\n";
+                geojsonFile << "      },\n";
+                geojsonFile << "      \"properties\": {\n";
+                geojsonFile << "        \"coordinate_system\": \"" << static_cast<int>(coordSys) << "\"\n"; // Store enum as int
+                geojsonFile << "      }\n";
+                geojsonFile << "    }\n";
+                geojsonFile << "  ]\n";
+                geojsonFile << "}\n";
+
+                geojsonFile.close();
+            }
+            else
+            {
+                std::cerr << "Unable to open file: " + fileName + ".geojson" << std::endl;
+            }
+        }
+    } // CoordinateSystem
+
+
     namespace Conversions
     {
         void ConvertLatLonAltToCartesian(double lat, double lon, double alt, double &x, double &y, double &z, CoordinateSystem::CoordinateSystem fromCoordSys, CoordinateSystem::CoordinateSystem toCoordSys)
@@ -37,49 +70,184 @@ namespace Referee::Utils
 
                 ConvertLatLonAltToCartesian(latDeg, lonDeg, alt, x, y, z, CoordinateSystem::CoordinateSystem::DEG, CoordinateSystem::CoordinateSystem::LV95);
             }
-            
+            else 
+            {
+                std::cerr << "[From Referee::Utils::Conversions::ConvertLatLonAltToCartesian] Conversion from " << static_cast<int>(fromCoordSys) << " to " << static_cast<int>(toCoordSys) << " is currently not supported." << std::endl;
+            }
+        }
+
+
+        void CreateLASFromPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, 
+                                     double lon, 
+                                     double lat, 
+                                     double alt, 
+                                     const std::string& outputFilePath,
+                                     Referee::Utils::CoordinateSystem::CoordinateSystem coordSys)
+        {
+            pcl::io::savePLYFileBinary("temp_cloud.ply", *cloud);
+            std::string matrix = "1 0 0 " + std::to_string(lon) +
+                    " 0 1 0 " + std::to_string(lat) +
+                    " 0 0 1 " + std::to_string(alt) +
+                    " 0 0 0 1";
+
+            nlohmann::json pipeline = {
+                {"pipeline", {
+                    {
+                        {"type", "readers.ply"},
+                        {"filename", "temp_cloud.ply"}
+                    },
+                    {
+                        {"type", "filters.transformation"},
+                        {"matrix", matrix}
+                    },
+                    {
+                        {"type", "writers.las"},
+                        {"filename", outputFilePath},
+                        {"a_srs", "EPSG:2056"}
+                    }
+                }}
+            };
+            std::string pipelineStr = pipeline.dump();
+
+            std::ofstream pipelineFile("pipeline.json");
+            pipelineFile << pipelineStr; // pipelineStr is your JSON string
+            pipelineFile.close();
+
+            pdal::PipelineManager manager;
+            manager.readPipeline("pipeline.json");
+            manager.execute();
         }
     }
+
+
     namespace FileIterators
     {
         std::vector<std::string> GetFilesInDirectory(const std::string& directory, const std::string& extension)
         {
             std::vector<std::string> files;
-            for (const auto& entry : std::filesystem::directory_iterator(directory)) {
-            if (entry.path().extension() == extension) {
-                files.push_back(entry.path().string());
-            }
+            for (const auto& entry : std::filesystem::directory_iterator(directory)) 
+            {
+                if (entry.path().extension() == extension) 
+                {
+                    files.push_back(entry.path().string());
+                }
             }
             std::sort(files.begin(), files.end());
             return files;
         }
-    }
 
-    namespace Filtering
+
+        Eigen::Vector3d GetTranslationVectorFromFile(const std::string& filePath, Referee::Utils::CoordinateSystem::CoordinateSystem coordSys)
+        {
+            Eigen::Vector3d translationVector;
+            std::ifstream fileStream(filePath);
+            std::string line;
+            bool firstLine = true; // flag to skip the header line
+            while (std::getline(fileStream, line)) 
+            {
+                if (firstLine) {
+                    firstLine = false;
+                    continue; // skip the header line
+                }
+                std::istringstream lineStream(line);
+                std::string lat, lon, alt;
+                std::getline(lineStream, lon, ';');
+                std::getline(lineStream, lat, ';');
+                std::getline(lineStream, alt, ';');
+                double x, y, z;
+                Referee::Utils::Conversions::ConvertLatLonAltToCartesian(std::stod(lat), std::stod(lon), std::stod(alt), y, x, z, Referee::Utils::CoordinateSystem::CoordinateSystem::DEG, coordSys);
+                translationVector.x() = x;
+                translationVector.y() = y;
+                translationVector.z() = z;
+            }
+            return translationVector;
+        }
+
+
+        std::vector<Eigen::Vector3d> GetTranslationVectorsFromFiles(const std::vector<std::string>& filePaths, Referee::Utils::CoordinateSystem::CoordinateSystem coordSys)
+        {
+            std::vector<Eigen::Vector3d> translationVectors;
+            for (const auto& filePath : filePaths) 
+            {
+                Eigen::Vector3d translationVector = GetTranslationVectorFromFile(filePath, coordSys);
+                translationVectors.push_back(translationVector);
+            }
+            return translationVectors;
+        }
+    }
+    
+
+    namespace Coloring
     {
-        void CropPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double minX, double minY, double minZ, double maxX, double maxY, double maxZ)
+        void ColorPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int r, int g, int b)
         {
-            pcl::CropBox<pcl::PointXYZ> cropBoxFilter;
-            cropBoxFilter.setInputCloud(cloud);
-            Eigen::Vector4f minPoint;
-            minPoint[0] = minX;
-            minPoint[1] = minY;
-            minPoint[2] = minZ;
-            Eigen::Vector4f maxPoint;
-            maxPoint[0] = maxX;
-            maxPoint[1] = maxY;
-            maxPoint[2] = maxZ;
-            cropBoxFilter.setMin(minPoint);
-            cropBoxFilter.setMax(maxPoint);
-            cropBoxFilter.filter(*cloud);
-        }
-
-        void VoxelizePointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, double leafSize)
-        {
-            pcl::VoxelGrid<pcl::PointXYZ> sor;
-            sor.setInputCloud(cloud);
-            sor.setLeafSize(leafSize, leafSize, leafSize);
-            sor.filter(*cloud);
+            for(auto& point : *cloud)
+            {
+                pcl::PointXYZRGB coloredPoint;
+                coloredPoint.x = point.x;
+                coloredPoint.y = point.y;
+                coloredPoint.z = point.z;
+                coloredPoint.r = r;
+                coloredPoint.g = g;
+                coloredPoint.b = b;
+                coloredCloud->push_back(coloredPoint);
+            }
         }
     }
+
+
+    namespace NormalCalculation
+    {
+        void CalculateNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, pcl::PointCloud<pcl::Normal>::Ptr normals, int k)
+        {
+            std::cout << "Calculating normals..." << std::endl;
+            pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimation;
+            normalEstimation.setInputCloud(cloud);
+            pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
+            normalEstimation.setSearchMethod(tree);
+            normalEstimation.setKSearch(k);
+            normalEstimation.compute(*normals);
+            std::cout << "Normals calculated." << std::endl;
+        }
+    }
+
+
+    namespace IO
+    {
+        void SaveRotationAnglesAndStdDevs(const std::string& filename, const std::vector<std::pair<double, double>>& meansAndStdDevs, const std::vector<double>& correctedAngles)
+        {
+            std::ofstream outputFile(filename);
+            if (outputFile.is_open())
+            {
+                outputFile << "# PointcloudID, meanRotationAngle, stdDevRotationAngle, correctedRotationAngle" << std::endl;
+                for (size_t i = 0; i < meansAndStdDevs.size(); i++)
+                {
+                    outputFile << i << ", " << meansAndStdDevs[i].first << ", " << meansAndStdDevs[i].second << ", " << correctedAngles[i] << std::endl;
+                }
+                outputFile.close();
+            }
+            else
+            {
+                std::cerr << "Unable to open file: " + filename << std::endl;
+            }
+        }
+    }
+
+
+    namespace Trigonometry
+    {
+        std::vector<double> SolveAlKashi(Eigen::Vector3d sideA, Eigen::Vector3d sideB, Eigen::Vector3d sideC)
+        {
+            double a = sideA.norm();
+            double b = sideB.norm();
+            double c = sideC.norm();
+
+            double angleA = std::acos((b*b + c*c - a*a) / (2 * b * c));
+            double angleB = std::acos((a*a + c*c - b*b) / (2 * a * c));
+            double angleC = std::acos((a*a + b*b - c*c) / (2 * a * b));
+
+            return {angleA, angleB, angleC};
+        }
+    } // namespace Trigonometry
+    
 }
