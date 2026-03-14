@@ -50,7 +50,7 @@ include_directories(${CMAKE_SOURCE_DIR}/3rd_party/graaf/include)
 target_include_directories(${SHARED_LIB_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/3rd_party/graaf/include)
 
 # pcl
-find_package(PCL 1.15 REQUIRED COMPONENTS common io visualization filters segmentation features surface kdtree octree search sample_consensus registration keypoints tracking recognition)
+find_package(PCL 1.14 REQUIRED COMPONENTS common io visualization filters segmentation features surface kdtree octree search sample_consensus registration keypoints tracking recognition)
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
