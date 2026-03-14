@@ -4,10 +4,6 @@ Referee is a georeferenced point cloud registration method that limits the error
 > [!CAUTION]
 > This registration method is currently in development and the main branch is not yet fully functional.
 
-For a clear problem statement that Referee aims to solve, please refer to the [problem statement](./problem-statement.md) page.
-
-## For CIVIL-608 reproducibilitly assignment
-under `Referee/Results` you will find `One_page_synthesis.md`. This document is a short markdown that should be alimented by the c++ executable's results: a image of a point cloud and a plot of probability densities. The aim of the reproducibility challenge is to reproduce this document. To do so, the most simple way is to run the docker container as presented [hereunder](#container-for-cross-platform-reproducibility)
 
 ## Build instructions for ubuntu:
 
