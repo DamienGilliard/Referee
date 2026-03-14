@@ -1,4 +1,5 @@
 #include "GeometricTransformation.hh"
+#include <cmath>
 
 namespace Referee::Transformations
 {
@@ -45,7 +46,7 @@ namespace Referee::Transformations
         A.row(2) = plane3Normal.transpose();
 
         // If the normals are coplanar, replace the last row with (0, 0, 1)
-        if (A.determinant() < 1e-5)
+        if (std::abs(A.determinant()) < 1e-5)
         {
             std::cout << "The normals are coplanar, replacing the last row with (0, 0, 1)" << std::endl;
             A.row(2) = Eigen::Vector3d(0, 0, 1);
