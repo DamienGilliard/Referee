@@ -1055,7 +1055,7 @@ namespace Referee::Mapping
         if (theta > 0) 
         {
             v = (Eigen::Matrix3d::Identity() - 0.5 * omegaMatrix +
-                (1.0 / theta * theta - (1.0 - std::cos(theta)) / (2.0 * theta * theta)) *
+                (1.0 / (theta * theta) - (1.0 - std::cos(theta)) / (2.0 * theta * theta)) *
                 omegaMatrix * omegaMatrix) * translationVector;
         } 
         else 
