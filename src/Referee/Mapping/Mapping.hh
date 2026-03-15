@@ -484,9 +484,10 @@ namespace Referee::Mapping
              * Because we work within a tree, there will be only one unique path between two vertices, and we can use
              * a BFS algorithm to find this path (does not use edge weights). Docu: https://bobluppes.github.io/graaf/docs/algorithms/shortest-path/bfs-based-shortest-path
              * 
-             * @return A vector of pairs representing the correction loops
+             * @return A vector of vectors of vertex indices representing the correction loops
              */
-            std::vector<std::vector<std::pair<long unsigned int, long unsigned int>>> GetCorrectionLoops();
+            std::vector<std::vector<long unsigned int>> GetCorrectionLoops();
+            
 
 
         private:

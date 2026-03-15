@@ -254,14 +254,14 @@ namespace Referee::Mapping
         return nonMSTEdges;
     }
 
-    std::vector<std::vector<std::pair<long unsigned int, long unsigned int>>> Graph::GetCorrectionLoops()
+    std::vector<std::vector<long unsigned int>> Graph::GetCorrectionLoops()
     {
-        std::vector<std::vector<std::pair<long unsigned int, long unsigned int>>> correctionLoops;
+        std::vector<std::vector<long unsigned int>> correctionLoops;
         std::vector<std::pair<long unsigned int, long unsigned int>> nonMSTEdges = this->GetNonMSTEdges();
 
         for(std::pair<long unsigned int, long unsigned int> edge : nonMSTEdges)
         {
-            std::vector<std::pair<long unsigned int, long unsigned int>> correctionLoop;
+            std::vector<long unsigned int> correctionLoop;
             auto pathOpt = graaf::algorithm::bfs_shortest_path(this->__minimumSpanningTree, edge.first, edge.second);
             if(pathOpt)
             {
@@ -269,9 +269,9 @@ namespace Referee::Mapping
                 for(auto vertex : pathOpt.value().vertices)
                 {
                     std::cout << vertex << " ";
+                    correctionLoop.push_back(vertex);
                 }
                 std::cout << std::endl;
-                correctionLoop.push_back(edge);
             }
             else
             {
