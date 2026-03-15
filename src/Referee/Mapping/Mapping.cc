@@ -32,17 +32,12 @@ namespace Referee::Mapping
 
     Transformation::Transformation(Eigen::Matrix4d transformationMatrixInGlobalCoordinateSystem,
                            std::shared_ptr<Scan> fromScan,
-                           std::shared_ptr<Scan> toScan,
-                           float score)
+                           std::shared_ptr<Scan> toScan)
         : __globalTransformation(transformationMatrixInGlobalCoordinateSystem),
           __fromScan(fromScan),
-          __toScan(toScan),
-          __score(score)
+          __toScan(toScan)
     {
         Eigen::Matrix3d rotationMatrix = transformationMatrixInGlobalCoordinateSystem.block<3, 3>(0, 0);
-        Eigen::AngleAxisd angleAxis(rotationMatrix);
-        __globalRotationVector = angleAxis.axis() * angleAxis.angle();
-        __globalTranslation = transformationMatrixInGlobalCoordinateSystem.block<3, 1>(0, 3);
         __quaternion = Eigen::Quaterniond(rotationMatrix);
     }
 
@@ -53,9 +48,7 @@ namespace Referee::Mapping
         const std::string toName   = __toScan   ? __toScan->GetCloudFileName()   : std::string("<unknown>");
 
         std::cout << "Transformation from scan " << fromName << " to scan " << toName << std::endl;
-        std::cout << "Rotation vector: " << __globalRotationVector.transpose() << std::endl;
-        std::cout << "Rotation angle: " << __globalRotationVector.norm() << " radians" << std::endl;
-        std::cout << "Translation: " << __globalTranslation.transpose() << std::endl;
+        std::cout << "Rotation (quaternion): " << __quaternion.coeffs().transpose() << std::endl;
     }
 
 
@@ -1035,59 +1028,4 @@ namespace Referee::Mapping
         }
         return transformation;
     }
-
-
-    std::vector<Eigen::Vector3d> ComputeScrewAxis(Eigen::Matrix4d transformationMatrix)
-    {
-        Eigen::Matrix3d rotationMatrix = transformationMatrix.block<3, 3>(0, 0);
-        Eigen::Vector3d translationVector = transformationMatrix.block<3, 1>(0, 3);
-
-        Eigen::Matrix3d logRotation = rotationMatrix.log();
-        Eigen::Vector3d omega = Eigen::Vector3d(logRotation(2, 1), logRotation(0, 2), logRotation(1, 0));
-
-        Eigen::Matrix3d omegaMatrix;
-        omegaMatrix << 0, -omega(2), omega(1),
-                       omega(2), 0, -omega(0),
-                       -omega(1), omega(0), 0;
-        double theta = omega.norm();
-
-        Eigen::Vector3d v;
-        if (theta > 0) 
-        {
-            v = (Eigen::Matrix3d::Identity() - 0.5 * omegaMatrix +
-                (1.0 / (theta * theta) - (1.0 - std::cos(theta)) / (2.0 * theta * theta)) *
-                omegaMatrix * omegaMatrix) * translationVector;
-        } 
-        else 
-        {
-            v = translationVector;
-        }
-
-        Eigen::Vector3d omegaNormalized = omega.normalized();
-
-        Eigen::Vector3d vParallel = (omega.dot(v) / omega.dot(omega)) * omega;
-        Eigen::Vector3d vPerpendicular = translationVector - vParallel;
-
-        Eigen::Vector3d testPoint1(0, 0, 0);
-        Eigen::Vector3d testPoint2(0, translationVector.norm(), 0);
-        Eigen::Vector3d testPoint3(0, 0, translationVector.norm());
-
-        Eigen::Vector3d transformedPoint1 = rotationMatrix * testPoint1 + translationVector;
-        Eigen::Vector3d transformedPoint2 = rotationMatrix * testPoint2 + translationVector;
-        Eigen::Vector3d transformedPoint3 = rotationMatrix * testPoint3 + translationVector;
-
-        std::vector<Eigen::Vector3d> plane1 = {(transformedPoint1 + testPoint1)/2, (transformedPoint1 - testPoint1).normalized()};
-        std::vector<Eigen::Vector3d> plane2 = {(transformedPoint2 + testPoint2)/2, (transformedPoint2 - testPoint2).normalized()};
-        std::vector<Eigen::Vector3d> plane3 = {(transformedPoint3 + testPoint3)/2, (transformedPoint3 - testPoint3).normalized()};
-
-        Eigen::Vector3d intersectionPoint = Referee::Transformations::CalculatePlaneIntersection(plane1, plane2, plane3);
-
-        // Calculate a point on the axis of rotation
-        std::vector<Eigen::Vector3d> screwAxis;
-        screwAxis.push_back(omega);
-        screwAxis.push_back(vParallel);
-        screwAxis.push_back(intersectionPoint);
-        return screwAxis;
-    }
-
 }

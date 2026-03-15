@@ -269,56 +269,12 @@ namespace Referee::Mapping
             
             Transformation(Eigen::Matrix4d transformationMatrixInGlobalCoordinateSystem,
                            std::shared_ptr<Scan> fromScan = nullptr,
-                           std::shared_ptr<Scan> toScan = nullptr,
-                           float score = 0.0);
+                           std::shared_ptr<Scan> toScan = nullptr);
 
             /**
              * @brief Print the transformation to the console
              */
             void PrintTransformation();
-
-
-            // Eigen::Vector3d GetRotationAxis() const { return __rotationAxis; }
-            // Eigen::Vector3d GetPointOnAxis() const { return __pointOnAxis; }
-            double GetRotationAngle() const 
-            { 
-                if (__globalRotationVector.z() < 0)
-                {
-                    return -__globalRotationVector.norm();
-                } 
-                else
-                {
-                    return __globalRotationVector.norm();
-                }
-            }
-
-
-            /**
-             * @brief Get the rotation vector
-             * @return Eigen::Vector3d rotation vector
-             */
-            Eigen::Vector3d GetRotationVector() const { return __globalRotationVector; }
-
-
-            /**
-             * @brief Get the transformation matrix in the global coordinate system
-             * @return Eigen::Matrix4d transformation matrix in the global coordinate system
-             */
-            void SetRotationVector(Eigen::Vector3d rotationVector) { __globalRotationVector = rotationVector; }
-
-
-            /**
-             * @brief Get the translation vector
-             * @return Eigen::Vector3d translation vector
-             */
-            Eigen::Vector3d GetTranslation() const { return __globalTranslation; }
-
-
-            /**
-             * @brief set the translation vector
-             * @param translation Translation vector expressed in the global coordinate system
-             */
-            void SetTranslation(Eigen::Vector3d translation) { __globalTranslation = translation; }
 
 
             /**
@@ -334,13 +290,14 @@ namespace Referee::Mapping
              */
             Eigen::Matrix4d GetInverse() const { return __globalTransformation.inverse(); }
 
+            /**
+            * @brief Get the rotation part of the transformation as a quaternion
+            * @return Eigen::Quaterniond rotation part of the transformation as a quaternion
+            */
+            Eigen::Quaterniond GetRotationAsQuaternion() const { return __quaternion; }
+
             
         private:
-            
-            Eigen::Vector3d __globalRotationVector; // rotation axis expressed in the global coordinate system, the norm of this vector is the rotation angle in radians
-           
-            Eigen::Vector3d __globalTranslation; // translation vector expressed in the global coordinate system
-
             Eigen::Matrix4d __globalTransformation; // transformation matrix in the global coordinate system
 
             Eigen::Quaterniond __quaternion; // quaternion representing the rotation
@@ -348,8 +305,6 @@ namespace Referee::Mapping
             std::shared_ptr<Scan> __fromScan = nullptr; // pointer to the scan from which the transformation is computed
 
             std::shared_ptr<Scan> __toScan = nullptr; // pointer to the scan to which the transformation is computed
-
-            float __score = 0.0; // score of the transformation (for example the number of correspondance used)
     };
 
 
@@ -936,14 +891,4 @@ namespace Referee::Mapping
      * @param maxCorrespondenceDistance maximum correspondence distance for the ICP algorithm
      */
     Eigen::Matrix4d RefinePairwiseTransformation(pcl::PointCloud<pcl::PointNormal>::Ptr source, pcl::PointCloud<pcl::PointNormal>::Ptr target, RefinementMethod method, double maxCorrespondenceDistance);
-
-
-    /**
-     * @brief Computes the rotation axis and translation along this axis. This relies on the Chasles theorem. 
-     * @param ChaslesTransformation the transformation matrix
-     * @return the rotation axis of the transformation matrix (first vector) and the translation along this axis (second vector), and a ploint on the axis (third vector)
-     * @note The rotation axis norm is the rotation angle in radians.
-     */
-    std::vector<Eigen::Vector3d> ComputeScrewAxis(Eigen::Matrix4d ChaslesTransformation);
-
 }
