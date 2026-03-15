@@ -289,6 +289,49 @@ namespace Referee::Mapping
             void PrintTransformation();
 
 
+            // Eigen::Vector3d GetRotationAxis() const { return __rotationAxis; }
+            // Eigen::Vector3d GetPointOnAxis() const { return __pointOnAxis; }
+            double GetRotationAngle() const 
+            { 
+                if (__globalRotationVector.z() < 0)
+                {
+                    return -__globalRotationVector.norm();
+                } 
+                else
+                {
+                    return __globalRotationVector.norm();
+                }
+            }
+
+
+            /**
+             * @brief Get the rotation vector
+             * @return Eigen::Vector3d rotation vector
+             */
+            Eigen::Vector3d GetRotationVector() const { return __globalRotationVector; }
+
+
+            /**
+             * @brief Get the transformation matrix in the global coordinate system
+             * @return Eigen::Matrix4d transformation matrix in the global coordinate system
+             */
+            void SetRotationVector(Eigen::Vector3d rotationVector) { __globalRotationVector = rotationVector; }
+
+
+            /**
+             * @brief Get the translation vector
+             * @return Eigen::Vector3d translation vector
+             */
+            Eigen::Vector3d GetTranslation() const { return __globalTranslation; }
+
+
+            /**
+             * @brief set the translation vector
+             * @param translation Translation vector expressed in the global coordinate system
+             */
+            void SetTranslation(Eigen::Vector3d translation) { __globalTranslation = translation; }
+
+
             /**
              * @brief Get the transformation matrix in the global coordinate system
              * @return Eigen::Matrix4d transformation matrix in the global coordinate system
@@ -310,6 +353,11 @@ namespace Referee::Mapping
 
             
         private:
+            
+            Eigen::Vector3d __globalRotationVector; // rotation axis expressed in the global coordinate system, the norm of this vector is the rotation angle in radians
+           
+            Eigen::Vector3d __globalTranslation; // translation vector expressed in the global coordinate system
+
             Eigen::Matrix4d __globalTransformation; // transformation matrix in the global coordinate system
 
             Eigen::Quaterniond __quaternion; // quaternion representing the rotation
