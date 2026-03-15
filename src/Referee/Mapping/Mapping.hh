@@ -540,6 +540,11 @@ namespace Referee::Mapping
                 return this->__scans[index];
             }
 
+            void ComputeGraph()
+            {
+                Graph::CreateUndirectedGraph(this-> __initialPositions, this->__connectivityMatrix);
+            }
+
 
             /**
              * @brief Getter for the graph singleton instance
