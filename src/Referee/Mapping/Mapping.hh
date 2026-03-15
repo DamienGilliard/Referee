@@ -109,6 +109,18 @@ namespace Referee::Mapping
              */
             void Rotate(Eigen::Quaterniond& rotation) { this->orientation_ = rotation * this->orientation_; }
 
+            /**
+             * @brief Get the transformation matrix from the global coordinate system to the pose's local coordinate system
+             * @return Transformation matrix in the global coordinate system
+             */
+            Eigen::Matrix4d ToTransformationMatrix() const
+            {
+                Eigen::Matrix4d transformationMatrix = Eigen::Matrix4d::Identity();
+                transformationMatrix.block<3,3>(0,0) = this->orientation_.toRotationMatrix();
+                transformationMatrix.block<3,1>(0,3) = this->position_;
+                return transformationMatrix;
+            }
+
         private:
             Eigen::Vector3d position_; // Position in the global coordinate system
 
