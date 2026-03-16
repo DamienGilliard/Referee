@@ -354,6 +354,19 @@ namespace Referee::Mapping
              */
             Eigen::Matrix4d GetInverse() const { return __globalTransformation.partialPivLu().solve(Eigen::Matrix4d::Identity()); }
 
+
+            /**
+             * @brief Get the scan from which the transformation is computed
+             * @return Pointer to the scan from which the transformation is computed
+             */
+            std::shared_ptr<Scan> GetFromScan() const { return __fromScan; }
+
+            /**
+             * @brief Get the scan to which the transformation is computed
+             * @return Pointer to the scan to which the transformation is computed
+             */
+            std::shared_ptr<Scan> GetToScan() const { return __toScan; }
+
             
         private:
             
