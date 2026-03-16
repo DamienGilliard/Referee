@@ -358,6 +358,8 @@ namespace Referee::Mapping
                 {
                     std::cerr << "[ERROR] Invalid transformation matrix between vertices " 
                             << fromIndex << " and " << toIndex << std::endl;
+
+                    std::cerr << "Transformation matrix: \n" << this->__mappingMatrix[fromIndex][toIndex].GetTransformationMatrix()<< std::endl;
                     continue;
                 }
                 const Eigen::Matrix4d& transformation = this->__mappingMatrix[fromIndex][toIndex].GetTransformationMatrix();
@@ -381,6 +383,13 @@ namespace Referee::Mapping
             std::cout << summary.FullReport() << std::endl;
             for (int i = 0; i < posesAsVectors.size(); i++)
             {
+                std::cout << "[DEBUG] Optimized pose for vertex " << loop[i] << ": " 
+                        << posesAsVectors[i][0] << ", " 
+                        << posesAsVectors[i][1] << ", " 
+                        << posesAsVectors[i][2] << ", " 
+                        << posesAsVectors[i][3] << ", " 
+                        << posesAsVectors[i][4] << ", " 
+                        << posesAsVectors[i][5] << std::endl;
                 delete[] posesAsVectors[i]; // Clean up allocated memory
             }
         }
