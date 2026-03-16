@@ -39,6 +39,9 @@ namespace Referee::Mapping
     {
         Eigen::Matrix3d rotationMatrix = transformationMatrixInGlobalCoordinateSystem.block<3, 3>(0, 0);
         __quaternion = Eigen::Quaterniond(rotationMatrix);
+        Eigen::AngleAxisd angleAxis(rotationMatrix);
+        __globalTwistVector = angleAxis.angle() * angleAxis.axis();
+        __globalTranslation = transformationMatrixInGlobalCoordinateSystem.block<3, 1>(0, 3);
     }
 
 
@@ -49,6 +52,8 @@ namespace Referee::Mapping
 
         std::cout << "Transformation from scan " << fromName << " to scan " << toName << std::endl;
         std::cout << "Rotation (quaternion): " << __quaternion.coeffs().transpose() << std::endl;
+        std::cout << "Twist vector: " << __globalTwistVector.transpose() << std::endl;
+        std::cout << "Translation: " << __globalTranslation.transpose() << std::endl;
     }
 
 
