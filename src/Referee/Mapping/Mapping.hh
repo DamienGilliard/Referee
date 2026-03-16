@@ -718,6 +718,8 @@ namespace Referee::Mapping
             void SetTransformation(int i, int j, Referee::Mapping::Transformation transformation)
             {
                 __mappingMatrix[i][j] = transformation;
+                Eigen::Matrix4d transformationMatrix = transformation.GetTransformationMatrix();
+                __mappingMatrix[j][i] = Referee::Mapping::Transformation(transformationMatrix.inverse(), transformation.GetToScan(), transformation.GetFromScan());
             }
 
 
