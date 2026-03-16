@@ -365,6 +365,67 @@ namespace Referee::Mapping
             std::shared_ptr<Scan> __fromScan = nullptr; // pointer to the scan from which the transformation is computed
 
             std::shared_ptr<Scan> __toScan = nullptr; // pointer to the scan to which the transformation is computed
+
+            float __score = 0.0; // score of the transformation (for example the number of correspondance used)
+    };
+
+    struct TransformationError
+    {
+        TransformationError(const Eigen::Matrix4d& measurement) : measurement(measurement) {}
+
+        template <typename T>
+        bool operator()(const T* const poseI, const T* const poseJ, T* residuals) const 
+        {
+            // Ensure the parameter blocks are valid
+            assert(poseI != nullptr && "poseI is null");
+            assert(poseJ != nullptr && "poseJ is null");
+
+            // Map the parameter blocks to Eigen vectors
+            Eigen::Map<const Eigen::Matrix<T, 6, 1>> poseIVec(poseI);
+            Eigen::Map<const Eigen::Matrix<T, 6, 1>> poseJVec(poseJ);
+
+            // Ensure the mapped vectors are valid
+            assert(std::isfinite(poseIVec.norm()) && "poseIVec contains non-finite values");
+            assert(std::isfinite(poseJVec.norm()) && "poseJVec contains non-finite values");
+
+            // Convert poses to transformation matrices
+            Eigen::Matrix<T, 4, 4> T_i = Referee::Utils::Conversions::poseAsVectorToTransformationMatrix(poseIVec);
+            Eigen::Matrix<T, 4, 4> T_j = Referee::Utils::Conversions::poseAsVectorToTransformationMatrix(poseJVec);
+            Eigen::Matrix<T, 4, 4> T_ij = T_i.inverse() * T_j;
+
+            // Validate transformation matrices
+            assert((T_i.array().isFinite()).all() && "T_i contains non-finite values");
+            assert((T_j.array().isFinite()).all() && "T_j contains non-finite values");
+            assert((T_ij.array().isFinite()).all() && "T_ij contains non-finite values");
+
+            // Compute the inverse of the measurement matrix using partialPivLu
+            Eigen::Matrix<T, 4, 4> measurementInv = measurement.template cast<T>().partialPivLu().solve(Eigen::Matrix<T, 4, 4>::Identity());
+
+            // Validate measurement inverse
+            assert((measurementInv.array().isFinite()).all() && "measurement.inverse() contains non-finite values");
+
+
+            // Compute the transformation error
+            Eigen::Matrix<T, 4, 4> transformationError = T_ij * measurementInv;
+
+            // Validate transformation error
+            assert((transformationError.array().isFinite()).all() && "transformationError contains non-finite values");
+
+            // Convert transformation error to twist
+            Eigen::Matrix<T, 6, 1> twistError = Referee::Utils::Conversions::transformMatrixToTwist(transformationError);
+
+            // Map residuals
+            Eigen::Map<Eigen::Matrix<T, 6, 1>> residual_map(residuals);
+            residual_map = twistError;
+
+            return true;
+        }
+
+        static ceres::CostFunction* Create(const Eigen::Matrix4d& measurement) {
+            return new ceres::AutoDiffCostFunction<TransformationError, 6, 6, 6>( new TransformationError(measurement) );
+        }
+
+        Eigen::Matrix4d measurement;
     };
 
 
