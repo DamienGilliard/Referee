@@ -302,6 +302,86 @@ namespace Referee::Mapping
     }
 
 
+    void MappingMatrix::ComputeLoopClosures()
+    {
+        std::vector<std::vector<long unsigned int>> correctionLoops = this->GetGraph().GetCorrectionLoops();
+        for(const std::vector<long unsigned int>& loop : correctionLoops)
+        {
+            std::cout << "[DEBUG] Computing loop closure for loop: ";
+            for(const auto& vertex : loop)
+            {
+                std::cout << vertex << " ";
+            }
+            std::cout << std::endl;
+
+            ceres::Problem problem;
+
+            std::vector<double*> posesAsVectors;
+            std::cout << "[DEBUG] loop size: " << loop.size() << std::endl;
+            for(int i = 0; i < loop.size(); i++)
+            {
+                double *poseAsVector = new double[6];
+                if (!poseAsVector) 
+                {
+                    std::cerr << "[ERROR] Failed to allocate poseAsVector for index " << i << std::endl;
+                    continue;
+                }
+                poseAsVector[0] = this->__initialPositions[loop[i]].x();
+                poseAsVector[1] = this->__initialPositions[loop[i]].y();
+                poseAsVector[2] = this->__initialPositions[loop[i]].z();
+                poseAsVector[3] = 0.0;
+                poseAsVector[4] = 0.0;
+                poseAsVector[5] = 0.0;
+
+                posesAsVectors.push_back(poseAsVector);
+                problem.AddParameterBlock(poseAsVector, 6);
+                
+                if (i == 0)
+                {
+                    problem.SetParameterBlockConstant(poseAsVector); // fix the first pose to anchor the loop
+                }
+
+            }
+
+            std::vector<Eigen::Matrix4d> loopConstraints;
+            for(int i = 0; i < loop.size(); i++)
+            {
+                int fromIndex = loop[i];
+                int toIndex = loop[(i + 1) % loop.size()]; // next vertex in the loop, wrap around at the end
+
+                if (!this->__mappingMatrix[fromIndex][toIndex].GetTransformationMatrix().allFinite()) 
+                {
+                    std::cerr << "[ERROR] Invalid transformation matrix between vertices " 
+                            << fromIndex << " and " << toIndex << std::endl;
+                    continue;
+                }
+                const Eigen::Matrix4d& transformation = this->__mappingMatrix[fromIndex][toIndex].GetTransformationMatrix();
+                loopConstraints.push_back(transformation);
+            }
+            for (int i = 0; i < loopConstraints.size(); ++i)
+            {
+                ceres::CostFunction* costFunction = Referee::Mapping::TransformationError::Create(loopConstraints[i]);
+                problem.AddResidualBlock(costFunction, 
+                                         new ceres::HuberLoss(1.0),
+                                         posesAsVectors[i], 
+                                         posesAsVectors[(i + 1) % posesAsVectors.size()]);
+            }
+            ceres::Solver::Options options;
+            options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+            options.minimizer_progress_to_stdout = true;
+            options.function_tolerance = 1e-6; // Adjust tolerance
+            options.max_num_iterations = 100;
+            ceres::Solver::Summary summary;
+            ceres::Solve(options, &problem, &summary);
+            std::cout << summary.FullReport() << std::endl;
+            for (int i = 0; i < posesAsVectors.size(); i++)
+            {
+                delete[] posesAsVectors[i]; // Clean up allocated memory
+            }
+        }
+    }
+
+
     void MappingMatrix::CalculateMeanTransformationMatrices()
     {
         // std::vector<double> stdDevRotations;
