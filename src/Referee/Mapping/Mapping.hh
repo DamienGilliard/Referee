@@ -21,6 +21,8 @@
 #include <graaflib/io/dot.h>
 #include <graaflib/algorithm/minimum_spanning_tree/prim.h>
 #include <graaflib/algorithm/shortest_path/bfs_shortest_path.h>
+#include <ceres/ceres.h>
+#include <ceres/rotation.h>
 
 #include "../../3rd_party/GlobalMatch/code/global_match/stem_mapping.h"
 #include "../../3rd_party/GlobalMatch/code/global_match/stem_matching.h"
@@ -312,6 +314,13 @@ namespace Referee::Mapping
 
 
             /**
+             * @brief Get the twist vector
+             * @return Eigen::Vector3d twist vector
+             */
+            Eigen::Vector3d GetTwistVector() const { return __globalTwistVector; }
+
+
+            /**
              * @brief Get the transformation matrix in the global coordinate system
              * @return Eigen::Matrix4d transformation matrix in the global coordinate system
              */
@@ -343,19 +352,15 @@ namespace Referee::Mapping
              * @brief Get the inverse transformation matrix in the global coordinate system
              * @return Eigen::Matrix4d inverse transformation matrix in the global coordinate system
              */
-            Eigen::Matrix4d GetInverse() const { return __globalTransformation.inverse(); }
-
-            /**
-            * @brief Get the rotation part of the transformation as a quaternion
-            * @return Eigen::Quaterniond rotation part of the transformation as a quaternion
-            */
-            Eigen::Quaterniond GetRotationAsQuaternion() const { return __quaternion; }
+            Eigen::Matrix4d GetInverse() const { return __globalTransformation.partialPivLu().solve(Eigen::Matrix4d::Identity()); }
 
             
         private:
             
             Eigen::Vector3d __globalRotationVector; // rotation axis expressed in the global coordinate system, the norm of this vector is the rotation angle in radians
            
+            Eigen::Vector3d __globalTwistVector; // twist vector expressed in the global coordinate system, the norm of this vector is the rotation angle in radians, and the direction of this vector is the rotation axis in the global coordinate system
+            
             Eigen::Vector3d __globalTranslation; // translation vector expressed in the global coordinate system
 
             Eigen::Matrix4d __globalTransformation; // transformation matrix in the global coordinate system
@@ -676,6 +681,11 @@ namespace Referee::Mapping
             {
                 return this->__graph.GetInstanceOfUndirectedGraph();
             }
+                        
+            /**
+             * @brief Using Ceres solver, we use the non-MST edges as constraints to correct the transformations along the MST and reduce drift. 
+             */
+            void ComputeLoopClosures();
 
 
             /**
