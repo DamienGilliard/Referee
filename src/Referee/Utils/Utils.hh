@@ -90,6 +90,57 @@ namespace Referee
                                          double alt, 
                                          const std::string& outputFilePath,
                                          Referee::Utils::CoordinateSystem::CoordinateSystem coordSys = Referee::Utils::CoordinateSystem::CoordinateSystem::LV95);
+        
+            /**
+             * @brief Convert a pose represented as a 6D vector (x, y, z, qx, qy, qz, qw) to a 4x4 transformation matrix
+             * @param poseVector Pointer to a pose represented as a 6D vector (x, y, z, qx, qy, qz, qw)
+             * @return Eigen::Matrix<T, 4, 4> Transformation matrix corresponding to the input pose vector
+             */
+            template <typename Derived>
+            Eigen::Matrix<typename Derived::Scalar, 4, 4> poseAsVectorToTransformationMatrix(const Eigen::MatrixBase<Derived>& poseVector)
+            {
+                using T = typename Derived::Scalar;
+                Eigen::Matrix<T, 4, 4> transformationMatrix = Eigen::Matrix<T, 4, 4>::Identity();
+                // Extract translation
+                transformationMatrix(0, 3) = poseVector(0);
+                transformationMatrix(1, 3) = poseVector(1);
+                transformationMatrix(2, 3) = poseVector(2);
+                // Extract rotation
+                const T angle = poseVector.template tail<3>().norm();
+                if (angle < T(1e-8))
+                {
+                    // No rotation, return the transformation matrix with only translation
+                    return transformationMatrix;
+                }
+                Eigen::Matrix<T, 3, 3> rotationMatrix = Eigen::AngleAxis<T>(angle, poseVector.template tail<3>().normalized()).toRotationMatrix();
+                transformationMatrix.template block<3, 3>(0, 0) = rotationMatrix;
+                std::cout << "[DEBUG] poseAsVectorToTransformationMatrix: poseVector = [" << poseVector.transpose() << "], transformationMatrix = \n" << transformationMatrix << std::endl;
+                return transformationMatrix;
+            }
+
+            /**
+             * @brief Convert a transformation matrix to a twist (6D vector: 3D translation + 3D rotation)
+             * @param transform Transformation matrix to convert
+             * @return Eigen::Matrix<T, 6, 1> Twist corresponding to the input transformation matrix
+             */
+            template <typename Derived>
+            Eigen::Matrix<typename Derived::Scalar, 6, 1> transformMatrixToTwist(const Eigen::MatrixBase<Derived>& transform)
+            {
+                using T = typename Derived::Scalar;
+                Eigen::Matrix<T, 6, 1> twist;
+                // Extract translation
+                twist(0) = transform(0, 3);
+                twist(1) = transform(1, 3);
+                twist(2) = transform(2, 3);
+                // Extract rotation
+                Eigen::Matrix<T, 3, 3> rotationMatrix = transform.template block<3, 3>(0, 0);
+                Eigen::AngleAxis<T> angleAxis(rotationMatrix);
+                twist(3) = angleAxis.angle() * angleAxis.axis().x();
+                twist(4) = angleAxis.angle() * angleAxis.axis().y();
+                twist(5) = angleAxis.angle() * angleAxis.axis().z();
+                return twist;
+            }
+        
         } // Conversions
 
         namespace FileIterators
