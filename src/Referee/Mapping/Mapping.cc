@@ -307,22 +307,17 @@ namespace Referee::Mapping
     }
 
 
-    void MappingMatrix::ComputeLoopClosures()
+    std::vector<std::pair<int, Referee::Mapping::Pose>> MappingMatrix::ComputeLoopClosures()
     {
+        std::vector<std::pair<int, Referee::Mapping::Pose>> optimizedPoses;
         std::vector<std::vector<long unsigned int>> correctionLoops = this->GetGraph().GetCorrectionLoops();
         for(const std::vector<long unsigned int>& loop : correctionLoops)
         {
-            std::cout << "[DEBUG] Computing loop closure for loop: ";
-            for(const auto& vertex : loop)
-            {
-                std::cout << vertex << " ";
-            }
-            std::cout << std::endl;
-
             ceres::Problem problem;
 
             std::vector<double*> posesAsVectors;
-            std::cout << "[DEBUG] loop size: " << loop.size() << std::endl;
+
+            // We first set the initial poses into the ceres problem (poses that will be optimized)
             for(int i = 0; i < loop.size(); i++)
             {
                 double *poseAsVector = new double[6];
@@ -331,12 +326,14 @@ namespace Referee::Mapping
                     std::cerr << "[ERROR] Failed to allocate poseAsVector for index " << i << std::endl;
                     continue;
                 }
-                poseAsVector[0] = this->__initialPositions[loop[i]].x();
-                poseAsVector[1] = this->__initialPositions[loop[i]].y();
-                poseAsVector[2] = this->__initialPositions[loop[i]].z();
-                poseAsVector[3] = 0.0;
-                poseAsVector[4] = 0.0;
-                poseAsVector[5] = 0.0;
+                Eigen::Matrix4d poseTransform = this->GetScan(loop[i]).GetPose().ToTransformationMatrix();
+                Eigen::Matrix<double, 6, 1> poseVector = Referee::Utils::Conversions::transformMatrixToTwist(poseTransform);
+                poseAsVector[0] = poseVector[0];
+                poseAsVector[1] = poseVector[1];
+                poseAsVector[2] = poseVector[2];
+                poseAsVector[3] = poseVector[3];
+                poseAsVector[4] = poseVector[4];
+                poseAsVector[5] = poseVector[5];
 
                 posesAsVectors.push_back(poseAsVector);
                 problem.AddParameterBlock(poseAsVector, 6);
@@ -345,9 +342,9 @@ namespace Referee::Mapping
                 {
                     problem.SetParameterBlockConstant(poseAsVector); // fix the first pose to anchor the loop
                 }
-
             }
 
+            // We then set the constraints (in our case transformation measurements)
             std::vector<Eigen::Matrix4d> loopConstraints;
             for(int i = 0; i < loop.size(); i++)
             {
@@ -363,15 +360,14 @@ namespace Referee::Mapping
                     continue;
                 }
                 const Eigen::Matrix4d& transformation = this->__mappingMatrix[fromIndex][toIndex].GetTransformationMatrix();
-                loopConstraints.push_back(transformation);
-            }
-            for (int i = 0; i < loopConstraints.size(); ++i)
-            {
-                ceres::CostFunction* costFunction = Referee::Mapping::TransformationError::Create(loopConstraints[i]);
+                const Eigen::Matrix4d& registredPose = transformation * this->GetScan(fromIndex).GetPose().ToTransformationMatrix();
+                const Eigen::Matrix4d& poseDifference = registredPose.inverse() * this->GetScan(toIndex).GetPose().ToTransformationMatrix();
+
+                ceres::CostFunction* costFunction = Referee::Mapping::TransformationError::Create(poseDifference);
                 problem.AddResidualBlock(costFunction, 
                                          new ceres::HuberLoss(1.0),
-                                         posesAsVectors[i], 
-                                         posesAsVectors[(i + 1) % posesAsVectors.size()]);
+                                         posesAsVectors[fromIndex], 
+                                         posesAsVectors[toIndex]);
             }
             ceres::Solver::Options options;
             options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
@@ -383,16 +379,13 @@ namespace Referee::Mapping
             std::cout << summary.FullReport() << std::endl;
             for (int i = 0; i < posesAsVectors.size(); i++)
             {
-                std::cout << "[DEBUG] Optimized pose for vertex " << loop[i] << ": " 
-                        << posesAsVectors[i][0] << ", " 
-                        << posesAsVectors[i][1] << ", " 
-                        << posesAsVectors[i][2] << ", " 
-                        << posesAsVectors[i][3] << ", " 
-                        << posesAsVectors[i][4] << ", " 
-                        << posesAsVectors[i][5] << std::endl;
-                delete[] posesAsVectors[i]; // Clean up allocated memory
+                Eigen::Matrix4d optimizedPoseTransform = Referee::Utils::Conversions::poseAsVectorToTransformationMatrix(Eigen::Matrix<double, 6, 1>(posesAsVectors[loop[i]]));
+                Referee::Mapping::Pose optimizedPose(optimizedPoseTransform);
+                optimizedPoses.push_back(std::make_pair(loop[i], optimizedPose));
+                delete[] posesAsVectors[loop[i]]; // Clean up allocated memory
             }
         }
+        return optimizedPoses;
     }
 
 

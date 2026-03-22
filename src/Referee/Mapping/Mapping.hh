@@ -61,13 +61,31 @@ namespace Referee::Mapping
     {
         public:
             Pose() = default;
+
+            /**
+             * @brief Construct a new Pose object from position and orientation
+             * @param position Position in the global coordinate system
+             * @param orientation Orientation in the global coordinate system as a quaternion
+             */
             Pose(Eigen::Vector3d position, Eigen::Quaterniond orientation)
                 : position_(position), orientation_(orientation) 
                 {
                     std::cout << "Pose created with position: " << position_.transpose() 
                               << " and orientation (quaternion): " << orientation_.coeffs().transpose() << std::endl;
                 }
-
+            
+            /**
+             * @brief Construct a new Pose object from a transformation matrix
+             * @param transformationMatrix 4x4 homogeneous transformation matrix in the global coordinate system
+             */
+            Pose(Eigen::Matrix4d transformationMatrix)
+            {
+                this->position_ = transformationMatrix.block<3,1>(0,3);
+                Eigen::Matrix3d rotationMatrix = transformationMatrix.block<3,3>(0,0);
+                this->orientation_ = Eigen::Quaterniond(rotationMatrix);
+                std::cout << "Pose created from transformation matrix with position: " << position_.transpose() 
+                          << " and orientation (quaternion): " << orientation_.coeffs().transpose() << std::endl;
+            }
 
             /**
              * @brief Get the Position object
@@ -402,35 +420,18 @@ namespace Referee::Mapping
             Eigen::Map<const Eigen::Matrix<T, 6, 1>> poseIVec(poseI);
             Eigen::Map<const Eigen::Matrix<T, 6, 1>> poseJVec(poseJ);
 
-            // Ensure the mapped vectors are valid
-            assert(std::isfinite(poseIVec.norm()) && "poseIVec contains non-finite values");
-            assert(std::isfinite(poseJVec.norm()) && "poseJVec contains non-finite values");
-
             // Convert poses to transformation matrices
             Eigen::Matrix<T, 4, 4> T_i = Referee::Utils::Conversions::poseAsVectorToTransformationMatrix(poseIVec);
             Eigen::Matrix<T, 4, 4> T_j = Referee::Utils::Conversions::poseAsVectorToTransformationMatrix(poseJVec);
+
+            // Compute the relative transformation between the two poses
             Eigen::Matrix<T, 4, 4> T_ij = T_i.inverse() * T_j;
 
-            // Validate transformation matrices
-            assert((T_i.array().isFinite()).all() && "T_i contains non-finite values");
-            assert((T_j.array().isFinite()).all() && "T_j contains non-finite values");
-            assert((T_ij.array().isFinite()).all() && "T_ij contains non-finite values");
+            // Compute the error: measurement^{-1} * T_ij
+            Eigen::Matrix<T, 4, 4> errorMatrix = measurement.inverse().cast<T>() * T_ij;
 
-            // Compute the inverse of the measurement matrix using partialPivLu
-            Eigen::Matrix<T, 4, 4> measurementInv = measurement.template cast<T>().partialPivLu().solve(Eigen::Matrix<T, 4, 4>::Identity());
-
-            // Validate measurement inverse
-            assert((measurementInv.array().isFinite()).all() && "measurement.inverse() contains non-finite values");
-
-
-            // Compute the transformation error
-            Eigen::Matrix<T, 4, 4> transformationError = T_ij * measurementInv;
-
-            // Validate transformation error
-            assert((transformationError.array().isFinite()).all() && "transformationError contains non-finite values");
-
-            // Convert transformation error to twist
-            Eigen::Matrix<T, 6, 1> twistError = Referee::Utils::Conversions::transformMatrixToTwist(transformationError);
+            // Convert the error matrix to twist coordinates
+            Eigen::Matrix<T, 6, 1> twistError = Referee::Utils::Conversions::transformMatrixToTwist(errorMatrix);
 
             // Map residuals
             Eigen::Map<Eigen::Matrix<T, 6, 1>> residual_map(residuals);
@@ -440,7 +441,7 @@ namespace Referee::Mapping
         }
 
         static ceres::CostFunction* Create(const Eigen::Matrix4d& measurement) {
-            return new ceres::AutoDiffCostFunction<TransformationError, 6, 6, 6>( new TransformationError(measurement) );
+            return new ceres::AutoDiffCostFunction<TransformationError, 6, 6, 6>(new TransformationError(measurement));
         }
 
         Eigen::Matrix4d measurement;
@@ -695,10 +696,13 @@ namespace Referee::Mapping
                 return this->__graph.GetInstanceOfUndirectedGraph();
             }
                         
+
             /**
-             * @brief Using Ceres solver, we use the non-MST edges as constraints to correct the transformations along the MST and reduce drift. 
+             * @brief Using Ceres solver, we use the non-MST edges as constraints to correct the transformations along the MST and reduce drift.
+             * 
+             * @return A vector of pairs, where each pair contains the index of the pose in the graph and the corresponding corrected pose.
              */
-            void ComputeLoopClosures();
+            std::vector<std::pair<int, Referee::Mapping::Pose>> ComputeLoopClosures();
 
 
             /**
