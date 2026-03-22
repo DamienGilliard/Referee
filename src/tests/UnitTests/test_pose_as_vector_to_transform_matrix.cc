@@ -17,5 +17,26 @@ int main()
         std::cerr << "Error: Incorrect translation in transformation matrix." << std::endl;
         return 1;
     }
+
+    poseAsVector[5] = M_PI / 2; // 90 degrees rotation around Z axis
+
+    Eigen::Matrix4d translationMatrix = Eigen::Matrix4d::Identity();
+    translationMatrix(0, 3) = 1.0;
+    translationMatrix(1, 3) = 1.0;
+    translationMatrix(2, 3) = 1.0;
+    Eigen::Matrix3d rotationMatrix = Eigen::AngleAxisd(poseAsVector[5], Eigen::Vector3d::UnitZ()).toRotationMatrix();
+    Eigen::Matrix4d expectedRotationMatrix = Eigen::Matrix4d::Identity();
+    expectedRotationMatrix.block<3, 3>(0, 0) = rotationMatrix;
+    
+    Eigen::Matrix4d expectedTransformationMatrix = translationMatrix * expectedRotationMatrix;
+    std::cout << "Expected transformation matrix:\n" << expectedTransformationMatrix << std::endl;
+    Eigen::Matrix4d convertedTransformationMatrix = Referee::Utils::Conversions::poseAsVectorToTransformationMatrix(poseAsVector);
+    std::cout << "Transformation matrix with rotation:\n" << convertedTransformationMatrix << std::endl;
+    if (!convertedTransformationMatrix.isApprox(expectedTransformationMatrix, 1e-6))
+    {
+        std::cerr << "Error: Transformation matrix does not match expected transformation matrix." << std::endl;
+        return 1;
+    }
+    
     return 0;
 }
