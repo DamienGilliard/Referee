@@ -21,6 +21,8 @@
 #include <graaflib/io/dot.h>
 #include <graaflib/algorithm/minimum_spanning_tree/prim.h>
 #include <graaflib/algorithm/shortest_path/bfs_shortest_path.h>
+#include <ceres/ceres.h>
+#include <ceres/rotation.h>
 
 #include "../../3rd_party/GlobalMatch/code/global_match/stem_mapping.h"
 #include "../../3rd_party/GlobalMatch/code/global_match/stem_matching.h"
@@ -59,13 +61,31 @@ namespace Referee::Mapping
     {
         public:
             Pose() = default;
+
+            /**
+             * @brief Construct a new Pose object from position and orientation
+             * @param position Position in the global coordinate system
+             * @param orientation Orientation in the global coordinate system as a quaternion
+             */
             Pose(Eigen::Vector3d position, Eigen::Quaterniond orientation)
                 : position_(position), orientation_(orientation) 
                 {
                     std::cout << "Pose created with position: " << position_.transpose() 
                               << " and orientation (quaternion): " << orientation_.coeffs().transpose() << std::endl;
                 }
-
+            
+            /**
+             * @brief Construct a new Pose object from a transformation matrix
+             * @param transformationMatrix 4x4 homogeneous transformation matrix in the global coordinate system
+             */
+            Pose(Eigen::Matrix4d transformationMatrix)
+            {
+                this->position_ = transformationMatrix.block<3,1>(0,3);
+                Eigen::Matrix3d rotationMatrix = transformationMatrix.block<3,3>(0,0);
+                this->orientation_ = Eigen::Quaterniond(rotationMatrix);
+                std::cout << "Pose created from transformation matrix with position: " << position_.transpose() 
+                          << " and orientation (quaternion): " << orientation_.coeffs().transpose() << std::endl;
+            }
 
             /**
              * @brief Get the Position object
@@ -108,6 +128,18 @@ namespace Referee::Mapping
              * @param rotation Rotation quaternion in the global coordinate system
              */
             void Rotate(Eigen::Quaterniond& rotation) { this->orientation_ = rotation * this->orientation_; }
+
+            /**
+             * @brief Get the transformation matrix from the global coordinate system to the pose's local coordinate system
+             * @return Transformation matrix in the global coordinate system
+             */
+            Eigen::Matrix4d ToTransformationMatrix() const
+            {
+                Eigen::Matrix4d transformationMatrix = Eigen::Matrix4d::Identity();
+                transformationMatrix.block<3,3>(0,0) = this->orientation_.toRotationMatrix();
+                transformationMatrix.block<3,1>(0,3) = this->position_;
+                return transformationMatrix;
+            }
 
         private:
             Eigen::Vector3d position_; // Position in the global coordinate system
@@ -269,8 +301,7 @@ namespace Referee::Mapping
             
             Transformation(Eigen::Matrix4d transformationMatrixInGlobalCoordinateSystem,
                            std::shared_ptr<Scan> fromScan = nullptr,
-                           std::shared_ptr<Scan> toScan = nullptr,
-                           float score = 0.0);
+                           std::shared_ptr<Scan> toScan = nullptr);
 
             /**
              * @brief Print the transformation to the console
@@ -298,6 +329,13 @@ namespace Referee::Mapping
              * @return Eigen::Vector3d rotation vector
              */
             Eigen::Vector3d GetRotationVector() const { return __globalRotationVector; }
+
+
+            /**
+             * @brief Get the twist vector
+             * @return Eigen::Vector3d twist vector
+             */
+            Eigen::Vector3d GetTwistVector() const { return __globalTwistVector; }
 
 
             /**
@@ -332,13 +370,28 @@ namespace Referee::Mapping
              * @brief Get the inverse transformation matrix in the global coordinate system
              * @return Eigen::Matrix4d inverse transformation matrix in the global coordinate system
              */
-            Eigen::Matrix4d GetInverse() const { return __globalTransformation.inverse(); }
+            Eigen::Matrix4d GetInverse() const { return __globalTransformation.partialPivLu().solve(Eigen::Matrix4d::Identity()); }
+
+
+            /**
+             * @brief Get the scan from which the transformation is computed
+             * @return Pointer to the scan from which the transformation is computed
+             */
+            std::shared_ptr<Scan> GetFromScan() const { return __fromScan; }
+
+            /**
+             * @brief Get the scan to which the transformation is computed
+             * @return Pointer to the scan to which the transformation is computed
+             */
+            std::shared_ptr<Scan> GetToScan() const { return __toScan; }
 
             
         private:
             
             Eigen::Vector3d __globalRotationVector; // rotation axis expressed in the global coordinate system, the norm of this vector is the rotation angle in radians
            
+            Eigen::Vector3d __globalTwistVector; // twist vector expressed in the global coordinate system, the norm of this vector is the rotation angle in radians, and the direction of this vector is the rotation axis in the global coordinate system
+            
             Eigen::Vector3d __globalTranslation; // translation vector expressed in the global coordinate system
 
             Eigen::Matrix4d __globalTransformation; // transformation matrix in the global coordinate system
@@ -350,6 +403,48 @@ namespace Referee::Mapping
             std::shared_ptr<Scan> __toScan = nullptr; // pointer to the scan to which the transformation is computed
 
             float __score = 0.0; // score of the transformation (for example the number of correspondance used)
+    };
+
+    struct TransformationError
+    {
+        TransformationError(const Eigen::Matrix4d& measurement) : measurement(measurement) {}
+
+        template <typename T>
+        bool operator()(const T* const poseI, const T* const poseJ, T* residuals) const 
+        {
+            // Ensure the parameter blocks are valid
+            assert(poseI != nullptr && "poseI is null");
+            assert(poseJ != nullptr && "poseJ is null");
+
+            // Map the parameter blocks to Eigen vectors
+            Eigen::Map<const Eigen::Matrix<T, 6, 1>> poseIVec(poseI);
+            Eigen::Map<const Eigen::Matrix<T, 6, 1>> poseJVec(poseJ);
+
+            // Convert poses to transformation matrices
+            Eigen::Matrix<T, 4, 4> T_i = Referee::Utils::Conversions::poseAsVectorToTransformationMatrix(poseIVec);
+            Eigen::Matrix<T, 4, 4> T_j = Referee::Utils::Conversions::poseAsVectorToTransformationMatrix(poseJVec);
+
+            // Compute the relative transformation between the two poses
+            Eigen::Matrix<T, 4, 4> T_ij = T_i.inverse() * T_j;
+
+            // Compute the error: measurement^{-1} * T_ij
+            Eigen::Matrix<T, 4, 4> errorMatrix = measurement.inverse().cast<T>() * T_ij;
+
+            // Convert the error matrix to twist coordinates
+            Eigen::Matrix<T, 6, 1> twistError = Referee::Utils::Conversions::transformMatrixToTwist(errorMatrix);
+
+            // Map residuals
+            Eigen::Map<Eigen::Matrix<T, 6, 1>> residual_map(residuals);
+            residual_map = twistError;
+
+            return true;
+        }
+
+        static ceres::CostFunction* Create(const Eigen::Matrix4d& measurement) {
+            return new ceres::AutoDiffCostFunction<TransformationError, 6, 6, 6>(new TransformationError(measurement));
+        }
+
+        Eigen::Matrix4d measurement;
     };
 
 
@@ -469,9 +564,10 @@ namespace Referee::Mapping
              * Because we work within a tree, there will be only one unique path between two vertices, and we can use
              * a BFS algorithm to find this path (does not use edge weights). Docu: https://bobluppes.github.io/graaf/docs/algorithms/shortest-path/bfs-based-shortest-path
              * 
-             * @return A vector of pairs representing the correction loops
+             * @return A vector of vectors of vertex indices representing the correction loops
              */
-            std::vector<std::vector<std::pair<long unsigned int, long unsigned int>>> GetCorrectionLoops();
+            std::vector<std::vector<long unsigned int>> GetCorrectionLoops();
+            
 
 
         private:
@@ -585,6 +681,11 @@ namespace Referee::Mapping
                 return this->__scans[index];
             }
 
+            void ComputeGraph()
+            {
+                Graph::CreateUndirectedGraph(this-> __initialPositions, this->__connectivityMatrix);
+            }
+
 
             /**
              * @brief Getter for the graph singleton instance
@@ -594,6 +695,14 @@ namespace Referee::Mapping
             {
                 return this->__graph.GetInstanceOfUndirectedGraph();
             }
+                        
+
+            /**
+             * @brief Using Ceres solver, we use the non-MST edges as constraints to correct the transformations along the MST and reduce drift.
+             * 
+             * @return A vector of pairs, where each pair contains the index of the pose in the graph and the corresponding corrected pose.
+             */
+            std::vector<std::pair<int, Referee::Mapping::Pose>> ComputeLoopClosures();
 
 
             /**
@@ -626,6 +735,8 @@ namespace Referee::Mapping
             void SetTransformation(int i, int j, Referee::Mapping::Transformation transformation)
             {
                 __mappingMatrix[i][j] = transformation;
+                Eigen::Matrix4d transformationMatrix = transformation.GetTransformationMatrix();
+                __mappingMatrix[j][i] = Referee::Mapping::Transformation(transformationMatrix.inverse(), transformation.GetToScan(), transformation.GetFromScan());
             }
 
 
@@ -936,14 +1047,4 @@ namespace Referee::Mapping
      * @param maxCorrespondenceDistance maximum correspondence distance for the ICP algorithm
      */
     Eigen::Matrix4d RefinePairwiseTransformation(pcl::PointCloud<pcl::PointNormal>::Ptr source, pcl::PointCloud<pcl::PointNormal>::Ptr target, RefinementMethod method, double maxCorrespondenceDistance);
-
-
-    /**
-     * @brief Computes the rotation axis and translation along this axis. This relies on the Chasles theorem. 
-     * @param ChaslesTransformation the transformation matrix
-     * @return the rotation axis of the transformation matrix (first vector) and the translation along this axis (second vector), and a ploint on the axis (third vector)
-     * @note The rotation axis norm is the rotation angle in radians.
-     */
-    std::vector<Eigen::Vector3d> ComputeScrewAxis(Eigen::Matrix4d ChaslesTransformation);
-
 }
