@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <sstream>
 #include <algorithm>
+#include <math.h>
 
 #include <pcl/point_types.h>
 #include <pcl/filters/approximate_voxel_grid.h>
@@ -16,6 +17,8 @@
 #include <pcl/io/ply_io.h>
 #include <pdal/PipelineManager.hpp>
 #include <pdal/StageFactory.hpp>
+#include "ceres/rotation.h"
+#include "ceres/jet.h"
 #include "../../3rd_party/json/single_include/nlohmann/json.hpp"
 
 namespace Referee 
@@ -78,7 +81,7 @@ namespace Referee
             /**
              * @brief Create a LAS file from a point cloud
              * @param cloud Point cloud to convert
-             * @param lon Longitude of the point cloud
+             * @param lon Longitude of the point cloud1
              * @param lat Latitude of the point cloud
              * @param alt Altitude of the point cloud
              * @param outputFilePath Path to the output LAS file
@@ -100,21 +103,23 @@ namespace Referee
             Eigen::Matrix<typename Derived::Scalar, 4, 4> poseAsVectorToTransformationMatrix(const Eigen::MatrixBase<Derived>& poseVector)
             {
                 using T = typename Derived::Scalar;
-                Eigen::Matrix<T, 4, 4> transformationMatrix = Eigen::Matrix<T, 4, 4>::Identity();
+                Eigen::Matrix<T, 4, 4> translationMatrix = Eigen::Matrix<T, 4, 4>::Identity();
                 // Extract translation
-                transformationMatrix(0, 3) = poseVector(0);
-                transformationMatrix(1, 3) = poseVector(1);
-                transformationMatrix(2, 3) = poseVector(2);
+                translationMatrix(0, 3) = poseVector(0);
+                translationMatrix(1, 3) = poseVector(1);
+                translationMatrix(2, 3) = poseVector(2);
                 // Extract rotation
                 const T angle = poseVector.template tail<3>().norm();
                 if (angle < T(1e-8))
                 {
                     // No rotation, return the transformation matrix with only translation
-                    return transformationMatrix;
+                    return translationMatrix;
                 }
-                Eigen::Matrix<T, 3, 3> rotationMatrix = Eigen::AngleAxis<T>(angle, poseVector.template tail<3>().normalized()).toRotationMatrix();
-                transformationMatrix.template block<3, 3>(0, 0) = rotationMatrix;
-                std::cout << "[DEBUG] poseAsVectorToTransformationMatrix: poseVector = [" << poseVector.transpose() << "], transformationMatrix = \n" << transformationMatrix << std::endl;
+                const Eigen::Matrix<T, 3, 1> axis = poseVector.template tail<3>() / angle;
+                const Eigen::Matrix<T, 3, 3> rotationMatrix = Eigen::AngleAxis<T>(angle, axis).toRotationMatrix();
+                Eigen::Matrix<T, 4, 4> rotationMatrix4d = Eigen::Matrix<T, 4, 4>::Identity();
+                rotationMatrix4d.template block<3, 3>(0, 0) = rotationMatrix;
+                Eigen::Matrix<T, 4, 4> transformationMatrix = translationMatrix * rotationMatrix4d;
                 return transformationMatrix;
             }
 
