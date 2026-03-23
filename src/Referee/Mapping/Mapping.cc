@@ -128,6 +128,11 @@ namespace Referee::Mapping
 
     void Graph::SetWeight(int vertex1, int vertex2, double weight)
     {
+        if(this->__undirectedGraph.__nVertices < 1)
+        {
+            std::cerr << "Error: The graph contains no vertices, and has probably not been properly created yet" << std::endl;
+            exit(EXIT_FAILURE);
+        }
         if(!this->__undirectedGraph.has_edge(vertex1, vertex2))
         {
             std::cerr << "Error: Trying to set weight of a non-existing edge." << std::endl;
