@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <sstream>
 #include <algorithm>
+#include <math.h>
 
 #include <pcl/point_types.h>
 #include <pcl/filters/approximate_voxel_grid.h>
@@ -16,6 +17,8 @@
 #include <pcl/io/ply_io.h>
 #include <pdal/PipelineManager.hpp>
 #include <pdal/StageFactory.hpp>
+#include "ceres/rotation.h"
+#include "ceres/jet.h"
 #include "../../3rd_party/json/single_include/nlohmann/json.hpp"
 
 namespace Referee 
@@ -78,7 +81,7 @@ namespace Referee
             /**
              * @brief Create a LAS file from a point cloud
              * @param cloud Point cloud to convert
-             * @param lon Longitude of the point cloud
+             * @param lon Longitude of the point cloud1
              * @param lat Latitude of the point cloud
              * @param alt Altitude of the point cloud
              * @param outputFilePath Path to the output LAS file
@@ -90,6 +93,59 @@ namespace Referee
                                          double alt, 
                                          const std::string& outputFilePath,
                                          Referee::Utils::CoordinateSystem::CoordinateSystem coordSys = Referee::Utils::CoordinateSystem::CoordinateSystem::LV95);
+        
+            /**
+             * @brief Convert a pose represented as a 6D vector (x, y, z, qx, qy, qz, qw) to a 4x4 transformation matrix
+             * @param poseVector Pointer to a pose represented as a 6D vector (x, y, z, qx, qy, qz, qw)
+             * @return Eigen::Matrix<T, 4, 4> Transformation matrix corresponding to the input pose vector
+             */
+            template <typename Derived>
+            Eigen::Matrix<typename Derived::Scalar, 4, 4> poseAsVectorToTransformationMatrix(const Eigen::MatrixBase<Derived>& poseVector)
+            {
+                using T = typename Derived::Scalar;
+                Eigen::Matrix<T, 4, 4> translationMatrix = Eigen::Matrix<T, 4, 4>::Identity();
+                // Extract translation
+                translationMatrix(0, 3) = poseVector(0);
+                translationMatrix(1, 3) = poseVector(1);
+                translationMatrix(2, 3) = poseVector(2);
+                // Extract rotation
+                const T angle = poseVector.template tail<3>().norm();
+                if (angle < T(1e-8))
+                {
+                    // No rotation, return the transformation matrix with only translation
+                    return translationMatrix;
+                }
+                const Eigen::Matrix<T, 3, 1> axis = poseVector.template tail<3>() / angle;
+                const Eigen::Matrix<T, 3, 3> rotationMatrix = Eigen::AngleAxis<T>(angle, axis).toRotationMatrix();
+                Eigen::Matrix<T, 4, 4> rotationMatrix4d = Eigen::Matrix<T, 4, 4>::Identity();
+                rotationMatrix4d.template block<3, 3>(0, 0) = rotationMatrix;
+                Eigen::Matrix<T, 4, 4> transformationMatrix = translationMatrix * rotationMatrix4d;
+                return transformationMatrix;
+            }
+
+            /**
+             * @brief Convert a transformation matrix to a twist (6D vector: 3D translation + 3D rotation)
+             * @param transform Transformation matrix to convert
+             * @return Eigen::Matrix<T, 6, 1> Twist corresponding to the input transformation matrix
+             */
+            template <typename Derived>
+            Eigen::Matrix<typename Derived::Scalar, 6, 1> transformMatrixToTwist(const Eigen::MatrixBase<Derived>& transform)
+            {
+                using T = typename Derived::Scalar;
+                Eigen::Matrix<T, 6, 1> twist;
+                // Extract translation
+                twist(0) = transform(0, 3);
+                twist(1) = transform(1, 3);
+                twist(2) = transform(2, 3);
+                // Extract rotation
+                Eigen::Matrix<T, 3, 3> rotationMatrix = transform.template block<3, 3>(0, 0);
+                Eigen::AngleAxis<T> angleAxis(rotationMatrix);
+                twist(3) = angleAxis.angle() * angleAxis.axis().x();
+                twist(4) = angleAxis.angle() * angleAxis.axis().y();
+                twist(5) = angleAxis.angle() * angleAxis.axis().z();
+                return twist;
+            }
+        
         } // Conversions
 
         namespace FileIterators

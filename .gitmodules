@@ -16,3 +16,6 @@
 [submodule "src/3rd_party/json"]
 	path = src/3rd_party/json
 	url = git@github.com:nlohmann/json.git
+[submodule "src/3rd_party/ceres"]
+	path = src/3rd_party/ceres
+	url = https://github.com/ceres-solver/ceres-solver.git

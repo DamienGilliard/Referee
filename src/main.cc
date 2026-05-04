@@ -19,7 +19,7 @@ void ComputeTransformationInThread(int sourcePointCloudFileIndex,
                                                                                            scans[targetPointCloudFileIndex].GetCloud(),
                                                                                            Referee::Mapping::TransformationComputationMethod::GlobalMatch);
     mappingMatrix.GetGraph().SetWeight(sourcePointCloudFileIndex, targetPointCloudFileIndex, -transformationMatrixAndScore.second);
-    Referee::Mapping::Transformation transformation(transformationMatrixAndScore.first, nullptr, nullptr, transformationMatrixAndScore.second);
+    Referee::Mapping::Transformation transformation(transformationMatrixAndScore.first, nullptr, nullptr);
 
     scans[sourcePointCloudFileIndex].FlushCloud();
     scans[targetPointCloudFileIndex].FlushCloud();
@@ -63,7 +63,6 @@ int main()
     mappingMatrix.SetScans(scans);
 
     Referee::Mapping::Graph& graph = Referee::Mapping::Graph::CreateUndirectedGraph(initialTranslationVectors, matrix);
-    graph.PrintGraph();
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr targetPointCloud(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredFinalPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -113,11 +112,9 @@ int main()
         }
     }
 
-    std::tuple<int, double> mostProbableRotation = mappingMatrix.GetMostProbableRotation();
     std::cout << "Vertex Count: " << mappingMatrix.GetGraph().GetVertexCount() << std::endl;
     mappingMatrix.GetGraph().PrintGraph();
     mappingMatrix.GetGraph().ComputeMinimumSpanningTree(0);
-    double overallMeanRotation = mappingMatrix.GetOverallMeanRotation();
     for(int i = 0; i < mappingMatrix.GetGraph().GetMinimumSpanningTree().size(); i++)
     {
         std::pair<int, int> edge = mappingMatrix.GetGraph().GetMinimumSpanningTree()[i];
@@ -141,6 +138,12 @@ int main()
                 mappingMatrix.GetScan(indexInSubtree).GetCloud(), 0.015);
         }
     }
+
+    std::vector<std::pair<int, Referee::Mapping::Pose>> test = mappingMatrix.ComputeLoopClosures();
+    for (std::pair<int, Referee::Mapping::Pose> pair : test)
+    {
+        std::cout << "We have a pose at index: " << pair.first << std::endl;
+    }
     // also load the root of the MST
     mappingMatrix.GetScan(mappingMatrix.GetGraph().GetMinimumSpanningTree()[0].first).LoadCloud();
     Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(
@@ -150,7 +153,6 @@ int main()
     Eigen::Matrix4d umeyamaTransformation = mappingMatrix.ComputeUmeyamaTransformationInSubtree(0);
     std::cout << "[DEBUG] final Umeyama transformation: " << std::endl << umeyamaTransformation << std::endl;
 
-    auto catcher = mappingMatrix.GetGraph().GetCorrectionLoops();
     std::vector<int> MSTOrder;
     MSTOrder.push_back(mappingMatrix.GetGraph().GetMinimumSpanningTree()[0].first); // add the root of the MST at the beginning
     for(std::pair<long unsigned int, long unsigned int> edge : mappingMatrix.GetGraph().GetMinimumSpanningTree())
