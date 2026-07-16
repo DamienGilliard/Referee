@@ -590,6 +590,8 @@ namespace Referee::Mapping
 
             int _nEdges = 0;
 
+            int mstRootIndex;
+
             const bool __isDirected;
 
             graaf::undirected_graph<int, double> __undirectedGraph; // Undirected graph to store the connectivity between the point clouds

@@ -150,6 +150,7 @@ namespace Referee::Mapping
             exit(EXIT_FAILURE);
         }
 
+        this->mstRootIndex = rootVertexIndex;
         auto mstEdgesOpt = graaf::algorithm::prim_minimum_spanning_tree(this->__undirectedGraph, rootVertexIndex);
         if (!mstEdgesOpt) 
         {
