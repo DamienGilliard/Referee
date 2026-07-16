@@ -527,6 +527,15 @@ namespace Referee::Mapping
 
 
             /**
+             * @brief Get the closest vertex to the root of the minimum spanning tree, from a given list of vertices
+             * @param vertices List of vertices to check
+             * @return The index of the closest vertex to the root of the minimum spanning tree
+             */
+            long unsigned int GetClosestVertexToRoot(std::vector<long unsigned int> vertices);
+
+
+            // ACTIVE
+            /**
              * @brief Print the graph to the console
              */
             void PrintGraph();

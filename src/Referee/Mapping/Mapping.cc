@@ -175,6 +175,36 @@ namespace Referee::Mapping
     }
 
 
+    long unsigned int Graph::GetClosestVertexToRoot(std::vector<long unsigned int> vertices)
+    {
+        if(vertices.empty())
+        {
+            std::cerr << "Error: The list of vertices is empty." << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        long unsigned int closestVertex = vertices[0];
+        double minDistance = std::numeric_limits<double>::max();
+        for(long unsigned int vertex : vertices)
+        {
+            auto pathOpt = graaf::algorithm::bfs_shortest_path(this->__minimumSpanningTree, this->mstRootIndex, vertex);
+            if(pathOpt)
+            {
+                double distance = pathOpt.value().vertices.size();
+                if(distance < minDistance)
+                {
+                    minDistance = distance;
+                    closestVertex = vertex;
+                }
+            }
+            else
+            {
+                std::cerr << "Error: No path found in MST between root and vertex " << vertex << std::endl;
+            }
+        }
+        return closestVertex;
+    }
+
+
     void Graph::PrintGraph()
     {
         for(const auto& vertex : this->__undirectedGraph.get_vertices())
