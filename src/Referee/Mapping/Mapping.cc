@@ -381,7 +381,6 @@ namespace Referee::Mapping
                 }
             }
             // We then set the constraints (in our case transformation measurements)
-            std::vector<Eigen::Matrix4d> loopConstraints;
             for(int i = 0; i < loop.size(); i++)
             {
                 int fromIndex = loop[i];
