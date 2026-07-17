@@ -7,8 +7,10 @@ namespace Referee::Mapping
         Eigen::Vector3d translation = transformation.block<3,1>(0,3);
         Eigen::Matrix3d rotationMatrix = transformation.block<3,3>(0,0);
         Eigen::Quaterniond rotation(rotationMatrix);
+        Eigen::Vector3d poseTranslation = this->__pose.GetPosition();
+        poseTranslation = rotation * poseTranslation + translation;
         __pose.Rotate(rotation);
-        __pose.Translate(translation);
+        __pose.SetPosition(poseTranslation);
         Referee::Transformations::TransformPointCloud<pcl::PointNormal>(__cloud, transformation);
     }
 
