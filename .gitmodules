@@ -19,3 +19,6 @@
 [submodule "src/3rd_party/ceres"]
 	path = src/3rd_party/ceres
 	url = https://github.com/ceres-solver/ceres-solver.git
+[submodule "src/3rd_party/Sophus"]
+	path = src/3rd_party/Sophus
+	url = https://github.com/strasdat/Sophus.git
