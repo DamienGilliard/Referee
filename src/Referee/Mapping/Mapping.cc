@@ -144,6 +144,19 @@ namespace Referee::Mapping
     }
 
 
+    double Graph::GetWeight(int vertex1, int vertex2)
+    {
+        if(!this->__undirectedGraph.has_edge(vertex1, vertex2))
+        {
+            return 0;
+        }
+        else
+        {
+            return this->__undirectedGraph.get_edge(vertex1, vertex2);
+        }
+    }
+
+    // ACTIVE
     std::vector<std::pair<long unsigned int, long unsigned int>> Graph::ComputeMinimumSpanningTree(int rootVertexIndex)
     {
         if(!__undirectedGraph.has_vertex(rootVertexIndex))
