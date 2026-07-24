@@ -583,6 +583,10 @@ namespace Referee::Mapping
              */
             void SetWeight(int vertex1, int vertex2, double weight);
 
+            /**
+             * @brief Gets the weight of the edge between vertex1 and vertex2, or 0 if the edge doesn't exist
+             */
+            double GetWeight(int vertex1, int vertex2);
 
             /**
              * @brief Compute the minimum spanning tree of the graph using Prim's algorithm
