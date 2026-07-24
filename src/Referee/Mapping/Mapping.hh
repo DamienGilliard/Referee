@@ -419,44 +419,98 @@ namespace Referee::Mapping
 
     struct TransformationError
     {
-        TransformationError(const Eigen::Matrix4d& measurement) : measurement(measurement) {}
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+        explicit TransformationError(const Eigen::Matrix4d& measurement,
+                                     double translationSigma,
+                                     double rotationSigma)
+            : measurementTwist_(Referee::Utils::Conversions::transformMatrixToTwist(measurement)),
+              translationWeight_(1.0 / std::max(translationSigma, 1e-12)),
+              rotationWeight_(1.0 / std::max(rotationSigma, 1e-12))
+        {}
 
         template <typename T>
-        bool operator()(const T* const poseI, const T* const poseJ, T* residuals) const 
+        bool operator()(const T* const poseI,
+                        const T* const poseJ,
+                        T* residuals) const
         {
-            // Ensure the parameter blocks are valid
-            assert(poseI != nullptr && "poseI is null");
-            assert(poseJ != nullptr && "poseJ is null");
+            using SE3 = Sophus::SE3<T>;
+            assert(poseI);
+            assert(poseJ);
 
-            // Map the parameter blocks to Eigen vectors
-            Eigen::Map<const Eigen::Matrix<T, 6, 1>> poseIVec(poseI);
-            Eigen::Map<const Eigen::Matrix<T, 6, 1>> poseJVec(poseJ);
+            // Pose parameters are se(3) vectors
+            Eigen::Map<const Eigen::Matrix<T,6,1>> xi_i(poseI);
+            Eigen::Map<const Eigen::Matrix<T,6,1>> xi_j(poseJ);
 
-            // Convert poses to transformation matrices
-            Eigen::Matrix<T, 4, 4> T_i = Referee::Utils::Conversions::poseAsVectorToTransformationMatrix(poseIVec);
-            Eigen::Matrix<T, 4, 4> T_j = Referee::Utils::Conversions::poseAsVectorToTransformationMatrix(poseJVec);
+            // Convert to SE(3)
+            const SE3 T_i = SE3::exp(xi_i);
+            const SE3 T_j = SE3::exp(xi_j);
 
-            // Compute the relative transformation between the two poses
-            Eigen::Matrix<T, 4, 4> T_ij = T_i.inverse() * T_j;
+            // Predicted relative transform
+            const SE3 T_ij = T_i.inverse() * T_j;
 
-            // Compute the error: measurement^{-1} * T_ij
-            Eigen::Matrix<T, 4, 4> errorMatrix = measurement.inverse().cast<T>() * T_ij;
+            // Measurement
+            const SE3 Z_ij = SE3::exp(measurementTwist_.template cast<T>());
 
-            // Convert the error matrix to twist coordinates
-            Eigen::Matrix<T, 6, 1> twistError = Referee::Utils::Conversions::transformMatrixToTwist(errorMatrix);
+            // Pose graph residual
+            Eigen::Map<Eigen::Matrix<T,6,1>> r(residuals);
+            r = (Z_ij.inverse() * T_ij).log();
 
-            // Map residuals
-            Eigen::Map<Eigen::Matrix<T, 6, 1>> residual_map(residuals);
-            residual_map = twistError;
-
+            // Balance translation (meters) and rotation (radians) in the objective.
+            r.template head<3>() *= T(translationWeight_);
+            r.template tail<3>() *= T(rotationWeight_);
             return true;
         }
 
-        static ceres::CostFunction* Create(const Eigen::Matrix4d& measurement) {
-            return new ceres::AutoDiffCostFunction<TransformationError, 6, 6, 6>(new TransformationError(measurement));
+        static ceres::CostFunction* Create(const Eigen::Matrix4d& measurement,
+                                           double translationSigma = 1.0,
+                                           double rotationSigma = 0.05)
+        {
+            return new ceres::AutoDiffCostFunction<
+                TransformationError, 6, 6, 6>(
+                    new TransformationError(measurement, translationSigma, rotationSigma));
         }
 
-        Eigen::Matrix4d measurement;
+        private:
+            Eigen::Matrix<double, 6, 1> measurementTwist_;
+            double translationWeight_;
+            double rotationWeight_;
+    };
+
+        struct PosePriorError
+    {
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+        PosePriorError(const Eigen::Matrix4d& referencePose, double sqrtWeight)
+            : referencePose(referencePose), sqrtWeight(sqrtWeight) {}
+    
+        template <typename T>
+        bool operator()(const T* const pose, T* residuals) const
+        {
+            using SE3 = Sophus::SE3<T>;
+
+            Eigen::Map<const Eigen::Matrix<T, 6, 1>> xi(pose);
+
+            const SE3 T_i = SE3::exp(xi);
+
+            Eigen::Matrix<T, 4, 4> referencePoseT = referencePose.template cast<T>();
+
+            const SE3 Z_i = SE3(referencePoseT);
+            Eigen::Map<Eigen::Matrix<T, 6, 1>> r(residuals);
+            r = (Z_i.inverse() * T_i).log();
+            r *= T(sqrtWeight);
+            return true;
+        }
+
+        static ceres::CostFunction* Create(const Eigen::Matrix4d& referencePose, double sqrtWeight)
+        {
+            return new ceres::AutoDiffCostFunction<
+                PosePriorError, 6, 6>(
+                    new PosePriorError(referencePose, sqrtWeight));
+        }
+    
+        Eigen::Matrix4d referencePose;
+        double sqrtWeight;
     };
 
 
