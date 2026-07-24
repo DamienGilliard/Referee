@@ -81,6 +81,11 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/ceres)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/ceres/include)
 target_link_libraries(${SHARED_LIB_NAME} Ceres::ceres)
 
+# Sophus
+set(BUILD_SOPHUS_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/Sophus)
+target_link_libraries(${SHARED_LIB_NAME} Sophus::Sophus)
+
 ############
 # Executable
 ############
