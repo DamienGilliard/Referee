@@ -77,6 +77,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/json/single_include)
 
 # ceres
 set(PROVIDE_UNINSTALL_TARGET OFF CACHE BOOL "" FORCE) # to avoid conflicting target names with GDAL
+set(USE_CUDA OFF CACHE STRING "" FORCE) # avoid CUDA architecture autodetection issues in bundled Ceres
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/ceres)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/ceres/include)
 target_link_libraries(${SHARED_LIB_NAME} Ceres::ceres)
