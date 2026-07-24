@@ -23,6 +23,7 @@
 #include <graaflib/algorithm/shortest_path/bfs_shortest_path.h>
 #include <ceres/ceres.h>
 #include <ceres/rotation.h>
+#include <sophus/se3.hpp>
 
 #include "../../3rd_party/GlobalMatch/code/global_match/stem_mapping.h"
 #include "../../3rd_party/GlobalMatch/code/global_match/stem_matching.h"
