@@ -242,10 +242,10 @@ namespace Referee::Mapping
 
 
             /**
-             * @brief Rotate the scan by a given transformation matrix
+             * @brief Transform the scan pose by a given transformation matrix
              * @param transformation Transformation matrix in the global coordinate system
              */
-            void TransformScan(Eigen::Matrix4d transformation);
+            void TransformScanPose(Eigen::Matrix4d transformation);
 
 
             /**

@@ -2,7 +2,7 @@
 
 namespace Referee::Mapping
 {
-    void Scan::TransformScan(Eigen::Matrix4d transformation)
+    void Scan::TransformScanPose(Eigen::Matrix4d transformation)
     {
         Eigen::Vector3d translation = transformation.block<3,1>(0,3);
         Eigen::Matrix3d rotationMatrix = transformation.block<3,3>(0,0);
@@ -11,7 +11,6 @@ namespace Referee::Mapping
         poseTranslation = rotation * poseTranslation + translation;
         __pose.Rotate(rotation);
         __pose.SetPosition(poseTranslation);
-        Referee::Transformations::TransformPointCloud<pcl::PointNormal>(__cloud, transformation);
     }
 
 
