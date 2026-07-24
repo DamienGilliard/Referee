@@ -385,6 +385,18 @@ namespace Referee::Mapping
              */
             std::shared_ptr<Scan> GetToScan() const { return __toScan; }
 
+            /**
+             * @brief Get the score of the transformation
+             * @return Score of the transformation (for example the number of correspondance used)
+             */
+            float GetScore() const { return __score; }
+
+            /**
+             * @brief Set the score of the transformation
+             * @param score Score of the transformation (for example the number of correspondance used)
+             */
+            void SetScore(float score) { __score = score; }
+
             
         private:
             
