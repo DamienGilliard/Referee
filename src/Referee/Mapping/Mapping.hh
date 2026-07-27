@@ -641,6 +641,13 @@ namespace Referee::Mapping
 
 
             /**
+             * @brief Get the index of the root vertex of the minimum spanning tree
+             * @return The index of the root vertex of the minimum spanning tree
+             */
+            int GetMSTRootIndex() const { return this->mstRootIndex; }
+
+
+            /**
              * @brief gets the graph edges that do not belong to the minimum spanning tree
              * 
              * @return A vector of edges not in the minimum spanning tree
