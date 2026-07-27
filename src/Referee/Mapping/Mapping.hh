@@ -524,6 +524,16 @@ namespace Referee::Mapping
     class Graph
     {
         public: 
+
+            ~Graph()
+            {
+                if (__instance)
+                {
+                    delete __instance;
+                    __instance = nullptr;
+                }
+            };
+
             /**
              * @brief Create a new undirected graph instance if none exists (singleton pattern)
              * @return Graph instance
