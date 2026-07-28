@@ -163,7 +163,7 @@ namespace Referee::Mapping
         auto mstEdgesOpt = graaf::algorithm::prim_minimum_spanning_tree(this->__undirectedGraph, rootVertexIndex);
         if (!mstEdgesOpt) 
         {
-            std::cerr << "Error: Could not compute minimum spanning tree." << std::endl;
+            std::cerr << "Error: Could not compute minimum spanning tree. The graph might be disconnected." << std::endl;
             return {};
         }
         std::vector<std::pair<long unsigned int, long unsigned int>> mstEdges = mstEdgesOpt.value();
