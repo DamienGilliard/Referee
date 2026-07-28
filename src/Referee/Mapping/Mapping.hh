@@ -1099,10 +1099,11 @@ namespace Referee::Mapping
 
 
     /**
-     * @brief Create a connectivity matrix from a set of geolocations
+     * @brief Create a connectivity matrix from a set of geolocations. Each node is connected to every node within maxDistance.
+     * A node with less than knn neighbors within maxDistance falls back to its knn nearest neighbors so the graph stays connected.
      * @param geolocations Geolocations of the nodes
-     * @param knn Number of nearest neighbors to consider
-     * @param maxDistance Maximum distance to consider a connection
+     * @param knn Number of nearest neighbors used as fallback when less than knn nodes lie within maxDistance
+     * @param maxDistance Maximum distance (in meters) at which two nodes are considered connected
      * @return the connectivity matrix. Each element of the vector is the list of indices the respective geolocations are connected to
      */
     std::vector<std::vector<int>> CreateConnectivityMatrix(std::vector<Eigen::Vector3d> geolocations, int knn, double maxDistance);

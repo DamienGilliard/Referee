@@ -1007,26 +1007,40 @@ namespace Referee::Mapping
             }
         }
 
-        // Get the knn closest neighbors for each node
+        // Connect each scan to every scan within maxDistance: any such pair overlaps enough to be
+        // stem-registered, and a missing edge means the pair's relative alignment is only inherited
+        // through long chains of other measurements.
         for(int i = 0; i < totalMatrix.size(); i++)
         {
-            std::vector<int> neighbors = totalMatrix[i];
             // Sort distancesToOtherPcs[i] based on the distance
-            std::sort(distancesToOtherPcs[i].begin(), distancesToOtherPcs[i].end(), [](const std::pair<int, double>& a, const std::pair<int, double>& b) 
+            std::sort(distancesToOtherPcs[i].begin(), distancesToOtherPcs[i].end(), [](const std::pair<int, double>& a, const std::pair<int, double>& b)
             {
                 return a.second < b.second;
             });
 
-            // Select the k nearest neighbors
-            matrix[i].resize(std::min(knn, static_cast<int>(distancesToOtherPcs[i].size())));
-            for (int j = 0; j < matrix[i].size(); j++)
+            for (int j = 0; j < distancesToOtherPcs[i].size(); j++)
             {
-                matrix[i][j] = distancesToOtherPcs[i][j].first; // Extract the index of the neighbor
+                if (distancesToOtherPcs[i][j].second <= maxDistance)
+                {
+                    matrix[i].push_back(distancesToOtherPcs[i][j].first);
+                }
+            }
+
+            // Fallback for a scan with no neighbor within maxDistance: connect its knn nearest
+            // anyway, otherwise the graph is disconnected and no MST can be computed.
+            if (matrix[i].size() < knn)
+            {
+                std::cout << "Warning: scan " << i << " has less than " << knn
+                          << " neighbors within " << maxDistance << " m, falling back to its " << knn << " nearest neighbors." << std::endl;
+                for (int j = 0; j < std::min(knn, static_cast<int>(distancesToOtherPcs[i].size())); j++)
+                {
+                    matrix[i].push_back(distancesToOtherPcs[i][j].first);
+                }
             }
 
             // Debugging output
             std::cout << "Neighbors for " << i << ": ";
-            for (int j = 0; j < matrix[i].size(); j++) 
+            for (int j = 0; j < matrix[i].size(); j++)
             {
                 std::cout << matrix[i][j] << " ";
             }
