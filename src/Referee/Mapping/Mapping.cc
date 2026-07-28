@@ -1032,6 +1032,7 @@ namespace Referee::Mapping
             {
                 std::cout << "Warning: scan " << i << " has less than " << knn
                           << " neighbors within " << maxDistance << " m, falling back to its " << knn << " nearest neighbors." << std::endl;
+                matrix[i].clear();
                 for (int j = 0; j < std::min(knn, static_cast<int>(distancesToOtherPcs[i].size())); j++)
                 {
                     matrix[i].push_back(distancesToOtherPcs[i][j].first);
