@@ -771,6 +771,19 @@ namespace Referee::Mapping
 
 
             /**
+             * @brief Getter for the neighbors of a given point cloud in the connectivity matrix
+             * @param i Index of the point cloud
+             * @return List of indices of the neighbors of the point cloud
+             */
+            std::vector<int> GetNeighbors(int i)
+            {
+                std::vector<int> neighbors = this->__connectivityMatrix[i];
+                return neighbors;
+            }
+
+
+
+            /**
              * @brief Getter for a scan at a given index
              * @param index Index of the scan
              * @return Scan at the given index
