@@ -425,7 +425,7 @@ namespace Referee::Mapping
         explicit TransformationError(const Eigen::Matrix4d& measurement,
                                      double translationSigma,
                                      double rotationSigma)
-            : measurementTwist_(Referee::Utils::Conversions::transformMatrixToTwist(measurement)),
+            : measurementTranslationAndQuaternion_(Referee::Utils::Conversions::transformMatrixToTranslationAndQuaternion(measurement)),
               translationWeight_(1.0 / std::max(translationSigma, 1e-12)),
               rotationWeight_(1.0 / std::max(rotationSigma, 1e-12))
         {}
@@ -439,22 +439,26 @@ namespace Referee::Mapping
             assert(poseI);
             assert(poseJ);
 
-            // Pose parameters are se(3) vectors
-            Eigen::Map<const Eigen::Matrix<T,6,1>> xi_i(poseI);
-            Eigen::Map<const Eigen::Matrix<T,6,1>> xi_j(poseJ);
+            // Pose parameters are [qx, qy, qz, qw, tx, ty, tz].
+            const Eigen::Quaternion<T> q_i(poseI[3], poseI[0], poseI[1], poseI[2]);
+            const Eigen::Quaternion<T> q_j(poseJ[3], poseJ[0], poseJ[1], poseJ[2]);
+            const Eigen::Matrix<T, 3, 1> t_i(poseI[4], poseI[5], poseI[6]);
+            const Eigen::Matrix<T, 3, 1> t_j(poseJ[4], poseJ[5], poseJ[6]);
 
-            // Convert to SE(3)
-            const SE3 T_i = SE3::exp(xi_i);
-            const SE3 T_j = SE3::exp(xi_j);
+            const SE3 T_i(q_i, t_i);
+            const SE3 T_j(q_j, t_j);
 
             // Predicted relative transform
             const SE3 T_ij = T_i.inverse() * T_j;
 
-            // Measurement
-            const SE3 Z_ij = SE3::exp(measurementTwist_.template cast<T>());
+            // Measurement is stored as [qx, qy, qz, qw, tx, ty, tz].
+            const Eigen::Matrix<T, 7, 1> m = measurementTranslationAndQuaternion_.template cast<T>();
+            const Eigen::Quaternion<T> q_meas(m[3], m[0], m[1], m[2]);
+            const Eigen::Matrix<T, 3, 1> t_meas(m[4], m[5], m[6]);
+            const SE3 Z_ij(q_meas, t_meas);
 
             // Pose graph residual
-            Eigen::Map<Eigen::Matrix<T,6,1>> r(residuals);
+            Eigen::Map<Eigen::Matrix<T,6,1>, Eigen::Unaligned> r(residuals);
             r = (Z_ij.inverse() * T_ij).log();
 
             // Balance translation (meters) and rotation (radians) in the objective.
@@ -468,17 +472,17 @@ namespace Referee::Mapping
                                            double rotationSigma = 0.05)
         {
             return new ceres::AutoDiffCostFunction<
-                TransformationError, 6, 6, 6>(
+                TransformationError, 6, 7, 7>(
                     new TransformationError(measurement, translationSigma, rotationSigma));
         }
 
         private:
-            Eigen::Matrix<double, 6, 1> measurementTwist_;
+            Eigen::Matrix<double, 7, 1> measurementTranslationAndQuaternion_;
             double translationWeight_;
             double rotationWeight_;
     };
 
-        struct PosePriorError
+    struct PosePriorError
     {
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -490,14 +494,22 @@ namespace Referee::Mapping
         {
             using SE3 = Sophus::SE3<T>;
 
-            Eigen::Map<const Eigen::Matrix<T, 6, 1>> xi(pose);
+            const Eigen::Quaternion<T> q_i(pose[3], pose[0], pose[1], pose[2]);
+            const Eigen::Matrix<T, 3, 1> t_i(pose[4], pose[5], pose[6]);
+            const SE3 T_i(q_i, t_i);
 
-            const SE3 T_i = SE3::exp(xi);
+            const Eigen::Matrix<T, 7, 1> referenceTranslationAndQuaternion =
+                Referee::Utils::Conversions::transformMatrixToTranslationAndQuaternion(referencePose).template cast<T>();
+            const Eigen::Quaternion<T> q_ref(referenceTranslationAndQuaternion[3],
+                                             referenceTranslationAndQuaternion[0],
+                                             referenceTranslationAndQuaternion[1],
+                                             referenceTranslationAndQuaternion[2]);
+            const Eigen::Matrix<T, 3, 1> t_ref(referenceTranslationAndQuaternion[4],
+                                               referenceTranslationAndQuaternion[5],
+                                               referenceTranslationAndQuaternion[6]);
+            const SE3 Z_i(q_ref, t_ref);
 
-            Eigen::Matrix<T, 4, 4> referencePoseT = referencePose.template cast<T>();
-
-            const SE3 Z_i = SE3(referencePoseT);
-            Eigen::Map<Eigen::Matrix<T, 6, 1>> r(residuals);
+            Eigen::Map<Eigen::Matrix<T, 6, 1>, Eigen::Unaligned> r(residuals);
             r = (Z_i.inverse() * T_i).log();
             r *= T(sqrtWeight);
             return true;
@@ -506,7 +518,7 @@ namespace Referee::Mapping
         static ceres::CostFunction* Create(const Eigen::Matrix4d& referencePose, double sqrtWeight)
         {
             return new ceres::AutoDiffCostFunction<
-                PosePriorError, 6, 6>(
+                PosePriorError, 6, 7>(
                     new PosePriorError(referencePose, sqrtWeight));
         }
     
@@ -514,6 +526,97 @@ namespace Referee::Mapping
         double sqrtWeight;
     };
 
+    // Ties every pose along a correction loop to its own measured relative transform, plus one
+    // closing residual tying the loop's first and last poses to the direct (non-MST) measurement
+    // between them. Composing pose *estimates* alone telescopes away regardless of the
+    // intermediate poses (T_i^-1 * T_i cancels identically for any T_i), so each edge's actual
+    // measured transform must appear in the residual for that edge to carry gradient information.
+    struct LoopClosureError
+    {
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+        // edgeMeasurements[i] is the measured transform between poses[i] and poses[i+1].
+        // closingMeasurement is the measured direct transform between poses[0] and poses[numPosesInLoop-1].
+        LoopClosureError(const std::vector<Eigen::Matrix4d>& edgeMeasurements,
+                          const Eigen::Matrix4d& closingMeasurement,
+                          double translationSigma,
+                          double rotationSigma,
+                          int numPosesInLoop)
+            : translationWeight_(1.0 / std::max(translationSigma, 1e-12)),
+              rotationWeight_(1.0 / std::max(rotationSigma, 1e-12)),
+              numPosesInLoop_(numPosesInLoop)
+        {
+            edgeMeasurementsTQ_.reserve(edgeMeasurements.size());
+            for (const Eigen::Matrix4d& measurement : edgeMeasurements)
+            {
+                edgeMeasurementsTQ_.push_back(Referee::Utils::Conversions::transformMatrixToTranslationAndQuaternion(measurement));
+            }
+            closingMeasurementTQ_ = Referee::Utils::Conversions::transformMatrixToTranslationAndQuaternion(closingMeasurement);
+        }
+
+        template <typename T>
+        bool operator()(const T* const* poses, T* residuals) const
+        {
+            using SE3 = Sophus::SE3<T>;
+
+            auto poseAt = [&](int i) -> SE3
+            {
+                const T* p = poses[i];
+                const Eigen::Quaternion<T> q(p[3], p[0], p[1], p[2]);
+                const Eigen::Matrix<T, 3, 1> t(p[4], p[5], p[6]);
+                return SE3(q, t);
+            };
+
+            auto writeResidual = [&](int block, const SE3& predicted, const Eigen::Matrix<double, 7, 1>& measurementTQ)
+            {
+                const Eigen::Matrix<T, 7, 1> m = measurementTQ.template cast<T>();
+                const Eigen::Quaternion<T> q_meas(m[3], m[0], m[1], m[2]);
+                const Eigen::Matrix<T, 3, 1> t_meas(m[4], m[5], m[6]);
+                const SE3 measured(q_meas, t_meas);
+
+                Eigen::Map<Eigen::Matrix<T, 6, 1>, Eigen::Unaligned> r(residuals + 6 * block);
+                r = (measured.inverse() * predicted).log();
+                r.template head<3>() *= T(translationWeight_);
+                r.template tail<3>() *= T(rotationWeight_);
+            };
+
+            // One residual per edge along the path.
+            for (int i = 0; i + 1 < numPosesInLoop_; ++i)
+            {
+                const SE3 predicted = poseAt(i).inverse() * poseAt(i + 1);
+                writeResidual(i, predicted, edgeMeasurementsTQ_[i]);
+            }
+
+            // Closing residual: this is the edge that actually forms the loop (not part of the MST path).
+            const SE3 predictedClosing = poseAt(0).inverse() * poseAt(numPosesInLoop_ - 1);
+            writeResidual(numPosesInLoop_ - 1, predictedClosing, closingMeasurementTQ_);
+
+            return true;
+        }
+
+        static ceres::CostFunction* Create(const std::vector<Eigen::Matrix4d>& edgeMeasurements,
+                                        const Eigen::Matrix4d& closingMeasurement,
+                                        double translationSigma,
+                                        double rotationSigma,
+                                        int numPosesInLoop)
+        {
+            auto* costFunction =
+                new ceres::DynamicAutoDiffCostFunction<LoopClosureError>(
+                    new LoopClosureError(edgeMeasurements, closingMeasurement, translationSigma, rotationSigma, numPosesInLoop));
+            for (int i = 0; i < numPosesInLoop; ++i)
+            {
+                costFunction->AddParameterBlock(7);
+            }
+            costFunction->SetNumResiduals(6 * numPosesInLoop); // (numPosesInLoop - 1) path edges + 1 closing edge
+            return costFunction;
+        }
+
+    private:
+        std::vector<Eigen::Matrix<double, 7, 1>> edgeMeasurementsTQ_;
+        Eigen::Matrix<double, 7, 1> closingMeasurementTQ_;
+        double translationWeight_, rotationWeight_;
+        int numPosesInLoop_;
+    };
 
     enum class GraphType
     {
@@ -807,6 +910,11 @@ namespace Referee::Mapping
             {
                 return this->__graph.GetInstanceOfUndirectedGraph();
             }
+
+            /**
+             * @brief Optimise all poses in the mapping matrix using Ceres solver and one single ceres problem. This method internally changes the poses of the scans in the mapping matrix.
+             */
+            void OptimiseAllPoses();
                         
 
             /**

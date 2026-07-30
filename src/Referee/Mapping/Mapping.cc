@@ -351,6 +351,182 @@ namespace Referee::Mapping
         std::cout << std::endl;
     }
 
+    void MappingMatrix::OptimiseAllPoses()
+    {
+        const double kMaxAcceptedLoopWeight = -12.0;
+        // Genuine MST drift is a few tens of centimeters; a closing edge disagreeing with the
+        // current poses far beyond that is a spurious stem match, not drift.
+        const double kMaxLoopTranslationDiscrepancyM = 0.25;
+        const double kMaxLoopRotationDiscrepancyRad = 5.0 * M_PI / 180.0;
+
+        // All edges (MST and closing) come from the same stem-matching registration, whose
+        // reliability scales with the number of matched stems (the graph weight is -score).
+        // Deriving each edge's sigma from its score keeps high-score pairs effectively locked
+        // (preserving their crisp pairwise alignment) and concentrates the loop-closure
+        // correction in the low-score edges, which is where the drift accumulates.
+        auto sigmasFromScore = [](double score) -> std::pair<double, double>
+        {
+            score = std::max(score, 3.0);
+            double translationSigmaM = std::min(std::max(0.5 / score, 0.05), 0.15);
+            double rotationSigmaRad  = std::min(std::max(0.02 / score, 0.0005), 0.005);
+            return std::make_pair(translationSigmaM, rotationSigmaRad);
+        };
+
+        std::vector<std::pair<int, double*>> indicesAndPoseAsVectors;
+        ceres::Problem problem;
+        for (int i = 0; i < __mappingMatrix.size(); ++i)
+        {
+            Sophus::SE3d currentPose = this->GetScan(i).GetPose().ToSophusSE3();
+            double* poseAsVector = new double[7];
+            poseAsVector[0] = currentPose.unit_quaternion().x();
+            poseAsVector[1] = currentPose.unit_quaternion().y();
+            poseAsVector[2] = currentPose.unit_quaternion().z();
+            poseAsVector[3] = currentPose.unit_quaternion().w();
+            poseAsVector[4] = currentPose.translation().x();
+            poseAsVector[5] = currentPose.translation().y();
+            poseAsVector[6] = currentPose.translation().z();
+
+            problem.AddParameterBlock(poseAsVector, 7, new Sophus::Manifold<Sophus::SE3>());
+            indicesAndPoseAsVectors.push_back(std::make_pair(i, poseAsVector));
+            if (i == this->GetGraph().GetMSTRootIndex())
+            {
+                problem.SetParameterBlockConstant(poseAsVector);
+            }
+        }
+
+        for (std::pair<long unsigned int, long unsigned int> mstEdge : this->GetGraph().GetMinimumSpanningTree())
+        {
+            int from = static_cast<int>(mstEdge.first);
+            int to   = static_cast<int>(mstEdge.second);
+            const Eigen::Matrix4d& Tij = this->__mappingMatrix[from][to].GetTransformationMatrix();
+            std::pair<double, double> edgeSigmas = sigmasFromScore(-this->GetGraph().GetWeight(from, to));
+            ceres::CostFunction* costFunction = Referee::Mapping::TransformationError::Create(Tij, edgeSigmas.first, edgeSigmas.second);
+            
+            double* poseAsVectorFrom = indicesAndPoseAsVectors[from].second;
+            double* poseAsVectorTo = indicesAndPoseAsVectors[to].second;
+
+            problem.AddResidualBlock(costFunction, 
+                                     new ceres::TukeyLoss(1.0), 
+                                     poseAsVectorFrom, 
+                                     poseAsVectorTo);
+
+        }
+
+        std::vector<std::pair<int, int>> acceptedClosures;
+        for (const std::vector<long unsigned int>& correctionLoop : this->GetGraph().GetCorrectionLoops())
+        {
+            if (correctionLoop.size() < 2)
+            {
+                continue;
+            }
+
+            int loopFront = static_cast<int>(correctionLoop.front());
+            int loopBack  = static_cast<int>(correctionLoop.back());
+
+            Eigen::Matrix4d loopClosureRelativeTransform = this->__mappingMatrix[loopFront][loopBack].GetTransformationMatrix();
+            double weight = this->GetGraph().GetWeight(loopFront, loopBack);
+            if (weight > kMaxAcceptedLoopWeight)
+            {
+                std::cout << "[DEBUG] Skipping loop closure between " << loopFront << " and " << loopBack << " because the weight is too high: " << weight << std::endl;
+                continue;
+            }
+
+            // Gate on how much the measurement disagrees with the current pose estimates.
+            Eigen::Matrix3d measuredRotation = loopClosureRelativeTransform.block<3, 3>(0, 0);
+            Sophus::SE3d measuredRelative(Eigen::Quaterniond(measuredRotation), loopClosureRelativeTransform.block<3, 1>(0, 3));
+            Sophus::SE3d poseFront = this->GetScan(loopFront).GetPose().ToSophusSE3();
+            Sophus::SE3d poseBack  = this->GetScan(loopBack).GetPose().ToSophusSE3();
+            Sophus::SE3d discrepancy = measuredRelative.inverse() * (poseFront.inverse() * poseBack);
+            double translationDiscrepancyM  = discrepancy.translation().norm();
+            double rotationDiscrepancyRad = discrepancy.so3().log().norm();
+            if (translationDiscrepancyM > kMaxLoopTranslationDiscrepancyM ||
+                rotationDiscrepancyRad > kMaxLoopRotationDiscrepancyRad)
+            {
+                std::cout << "[DEBUG] Rejecting loop closure between " << loopFront << " and " << loopBack
+                          << " as a likely spurious match (score " << -weight << "): discrepancy "
+                          << translationDiscrepancyM << " m / " << rotationDiscrepancyRad * 180.0 / M_PI
+                          << " deg exceeds gate (" << kMaxLoopTranslationDiscrepancyM << " m / "
+                          << kMaxLoopRotationDiscrepancyRad * 180.0 / M_PI << " deg)" << std::endl;
+                continue;
+            }
+            std::cout << "[DEBUG] Accepting loop closure between " << loopFront << " and " << loopBack
+                      << " (score " << -weight << "): discrepancy " << translationDiscrepancyM << " m / "
+                      << rotationDiscrepancyRad * 180.0 / M_PI << " deg" << std::endl;
+
+            // The MST path between loopFront and loopBack is already constrained edge-by-edge by
+            // the MST residual blocks above, so this single closing residual is enough: the joint
+            // optimization distributes the correction along the path's poses.
+            std::pair<double, double> closureSigmas = sigmasFromScore(-weight);
+            ceres::CostFunction* costFunction = Referee::Mapping::TransformationError::Create(
+                loopClosureRelativeTransform, closureSigmas.first, closureSigmas.second);
+            problem.AddResidualBlock(costFunction, new ceres::TukeyLoss(1.0),
+                                     indicesAndPoseAsVectors[loopFront].second,
+                                     indicesAndPoseAsVectors[loopBack].second);
+            acceptedClosures.push_back(std::make_pair(loopFront, loopBack));
+        }
+
+        // Soft priors
+        for (const std::pair<int, double*>& indexAndPose : indicesAndPoseAsVectors)
+        {
+            int index = indexAndPose.first;
+            double* poseAsVector = indexAndPose.second;
+            Eigen::Matrix4d initialPoseTransform = this->GetScan(index).GetPose().ToTransformationMatrix();
+            ceres::CostFunction* costFunction = Referee::Mapping::PosePriorError::Create(
+                initialPoseTransform, 1.0);
+            problem.AddResidualBlock(costFunction, new ceres::TukeyLoss(1.0), poseAsVector);
+        }
+
+        ceres::Solver::Options options;
+        options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+        options.minimizer_progress_to_stdout = true;
+        options.max_num_iterations = 100;
+        ceres::Solver::Summary summary;
+        ceres::Solve(options, &problem, &summary);
+        std::cout << summary.FullReport() << std::endl;
+
+        for (const auto& indexAndPose : indicesAndPoseAsVectors)
+        {
+            int index = indexAndPose.first;
+            double* poseAsVector = indexAndPose.second;
+            Eigen::Matrix4d optimizedPoseTransform = Eigen::Matrix4d::Identity();
+            Eigen::Quaterniond optimizedQuaternion(
+                poseAsVector[3],
+                poseAsVector[0],
+                poseAsVector[1],
+                poseAsVector[2]);
+            optimizedQuaternion.normalize();
+            optimizedPoseTransform.block<3, 3>(0, 0) = optimizedQuaternion.toRotationMatrix();
+            optimizedPoseTransform(0, 3) = poseAsVector[4];
+            optimizedPoseTransform(1, 3) = poseAsVector[5];
+            optimizedPoseTransform(2, 3) = poseAsVector[6];
+            this->GetScan(index).GetPose() = Referee::Mapping::Pose(optimizedPoseTransform);
+            delete[] poseAsVector; // Free the allocated memory
+        }
+
+        // Report where the remaining error lives: for every constraint, the disagreement
+        // between its measurement and the optimized poses. High-score edges should stay in
+        // the low-centimeter range; the drift correction should show up in low-score edges.
+        auto reportEdgeResidual = [this](int from, int to, const char* edgeType)
+        {
+            const Eigen::Matrix4d Z = this->__mappingMatrix[from][to].GetTransformationMatrix();
+            const Eigen::Matrix3d measuredRotation = Z.block<3, 3>(0, 0);
+            const Sophus::SE3d measuredRelative(Eigen::Quaterniond(measuredRotation), Z.block<3, 1>(0, 3));
+            const Sophus::SE3d discrepancy = measuredRelative.inverse() *
+                (this->GetScan(from).GetPose().ToSophusSE3().inverse() * this->GetScan(to).GetPose().ToSophusSE3());
+            std::cout << "[DEBUG] Final residual on " << edgeType << " edge " << from << " -> " << to
+                      << " (score " << -this->GetGraph().GetWeight(from, to) << "): "
+                      << discrepancy.translation().norm() * 100.0 << " cm / "
+                      << discrepancy.so3().log().norm() * 180.0 / M_PI << " deg" << std::endl;
+        };
+        for (const std::pair<long unsigned int, long unsigned int>& mstEdge : this->GetGraph().GetMinimumSpanningTree())
+        {
+            reportEdgeResidual(static_cast<int>(mstEdge.first), static_cast<int>(mstEdge.second), "MST");
+        }
+        for (const std::pair<int, int>& closure : acceptedClosures)
+        {
+            reportEdgeResidual(closure.first, closure.second, "closure");
+        }
+    }
 
     std::vector<std::pair<int, Referee::Mapping::Pose>> MappingMatrix::ComputeLoopClosures()
     {
