@@ -24,6 +24,7 @@
 #include <ceres/ceres.h>
 #include <ceres/rotation.h>
 #include <sophus/se3.hpp>
+#include <sophus/ceres_manifold.hpp> 
 
 #include "../../3rd_party/GlobalMatch/code/global_match/stem_mapping.h"
 #include "../../3rd_party/GlobalMatch/code/global_match/stem_matching.h"
