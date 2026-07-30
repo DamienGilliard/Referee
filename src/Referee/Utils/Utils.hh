@@ -20,6 +20,7 @@
 #include "ceres/rotation.h"
 #include "ceres/jet.h"
 #include "../../3rd_party/json/single_include/nlohmann/json.hpp"
+#include <sophus/se3.hpp>
 
 namespace Referee 
 {
