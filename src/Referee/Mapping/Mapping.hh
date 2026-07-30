@@ -1156,6 +1156,8 @@ namespace Referee::Mapping
      * @param target the point cloud we want to transform
      * @param method the method used in the computation. Currently only ICP with normals is supported
      * @param maxCorrespondenceDistance maximum correspondence distance for the ICP algorithm
+     * 
+     * @return a pair containing the refined transformation matrix and the number of correspondences used in the refinement.
      */
-    Eigen::Matrix4d RefinePairwiseTransformation(pcl::PointCloud<pcl::PointNormal>::Ptr source, pcl::PointCloud<pcl::PointNormal>::Ptr target, RefinementMethod method, double maxCorrespondenceDistance);
+    std::pair<Eigen::Matrix4d, float> RefinePairwiseTransformation(pcl::PointCloud<pcl::PointNormal>::Ptr source, pcl::PointCloud<pcl::PointNormal>::Ptr target, RefinementMethod method, double maxCorrespondenceDistance);
 }

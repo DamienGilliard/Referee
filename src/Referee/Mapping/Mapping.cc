@@ -1107,32 +1107,28 @@ namespace Referee::Mapping
     }
 
 
-    Eigen::Matrix4d RefinePairwiseTransformation(pcl::PointCloud<pcl::PointNormal>::Ptr target, pcl::PointCloud<pcl::PointNormal>::Ptr source, RefinementMethod method, double maxCorrespondenceDistance)
+    std::pair<Eigen::Matrix4d, float> RefinePairwiseTransformation(pcl::PointCloud<pcl::PointNormal>::Ptr target, pcl::PointCloud<pcl::PointNormal>::Ptr source, RefinementMethod method, double maxCorrespondenceDistance)
     {
         Eigen::Matrix4d transformation = Eigen::Matrix4d::Identity();
+        std::pair<Eigen::Matrix4d, float> result;
 
         if(method == RefinementMethod::ICPNormals)
         {
-            pcl::NormalEstimation<pcl::PointNormal, pcl::PointNormal> ne;
-            ne.setInputCloud(source);
-            pcl::search::KdTree<pcl::PointNormal>::Ptr tree(new pcl::search::KdTree<pcl::PointNormal>);
-            ne.setSearchMethod(tree);
-            pcl::PointCloud<pcl::PointNormal>::Ptr sourceWithNormals(new pcl::PointCloud<pcl::PointNormal>);
-            ne.setRadiusSearch(0.06);
-            ne.compute(*sourceWithNormals);
-            ne.setInputCloud(target);
-            pcl::PointCloud<pcl::PointNormal>::Ptr targetWithNormals(new pcl::PointCloud<pcl::PointNormal>);
-            ne.compute(*targetWithNormals);
+            if(source->points[0].normal_x == 0 && source->points[0].normal_y == 0 && source->points[0].normal_z == 0 || target->points[0].normal_x == 0 && target->points[0].normal_y == 0 && target->points[0].normal_z == 0)
+            {
+                std::cerr << "Source and or target point cloud has no normals, cannot use ICP with normals" << std::endl;
+                return {transformation, 0.0f};
+            }
 
             std::cout << "Computing transformation using ICP with normals" << std::endl;
 
             pcl::IterativeClosestPointWithNormals<pcl::PointNormal, pcl::PointNormal> icpNormals;
-            icpNormals.setInputSource(sourceWithNormals);
-            icpNormals.setInputTarget(targetWithNormals);
+            icpNormals.setInputSource(source);
+            icpNormals.setInputTarget(target);
             icpNormals.setMaximumIterations(50);
             icpNormals.setMaxCorrespondenceDistance(maxCorrespondenceDistance);
             icpNormals.setTransformationEpsilon(0.0001);
-            icpNormals.setEuclideanFitnessEpsilon(1);
+            icpNormals.setEuclideanFitnessEpsilon(0.0001);
 
             pcl::PointCloud<pcl::PointNormal>::Ptr dummy(new pcl::PointCloud<pcl::PointNormal>);
             icpNormals.align(*dummy);
@@ -1145,16 +1141,18 @@ namespace Referee::Mapping
                     transformation(i, j) = transformationf(i, j);
                 }
             }
+            result = {transformation, icpNormals.getFitnessScore()};
         }
+        
         else if (method == RefinementMethod::ICP)
         {
             pcl::IterativeClosestPoint<pcl::PointNormal, pcl::PointNormal> icp;
             icp.setInputSource(source);
             icp.setInputTarget(target);
-            icp.setMaximumIterations(3);
+            icp.setMaximumIterations(50);
             icp.setMaxCorrespondenceDistance(maxCorrespondenceDistance);
             icp.setTransformationEpsilon(0.0001);
-            icp.setEuclideanFitnessEpsilon(1);
+            icp.setEuclideanFitnessEpsilon(0.0001);
 
             pcl::PointCloud<pcl::PointNormal>::Ptr dummy(new pcl::PointCloud<pcl::PointNormal>);
             icp.align(*dummy);
@@ -1167,12 +1165,15 @@ namespace Referee::Mapping
                     transformation(i, j) = transformationf(i, j);
                 }
             }
+            result = {transformation, icp.getFitnessScore()};
         }
         
         else
         {
-            std::cerr << "Unknown refinement method" << std::endl;
+            std::cerr << "Unknown refinement method, returning identity transformation" << std::endl;
+            result = {transformation, 0.0f};
         }
-        return transformation;
+        
+        return result;
     }
 }
