@@ -817,9 +817,11 @@ namespace Referee::Mapping
                 : __graph(Graph::GetInstanceOfUndirectedGraph()) // because we need to initialize the graph member. It is a singleton class, so we can initialize it here and fill it later with the actual graph.
             {
                 __mappingMatrix.resize(numPointClouds);
+                __correctionsMatrix.resize(numPointClouds);
                 for (int i = 0; i < numPointClouds; i++)
                 {
                     __mappingMatrix[i].resize(numPointClouds);
+                    __correctionsMatrix[i].resize(numPointClouds);
                 }
 
                 for(int i = 0; i < numPointClouds; i++)
@@ -827,6 +829,7 @@ namespace Referee::Mapping
                     for(int j = 0; j < numPointClouds; j++)
                     {
                         __mappingMatrix[i][j] = Referee::Mapping::Transformation();
+                        __correctionsMatrix[i][j] = Referee::Mapping::Transformation();
                     }
                 }
             }
@@ -958,6 +961,11 @@ namespace Referee::Mapping
                 __mappingMatrix[i][j] = transformation;
             }
 
+            void SetCorrection(int i, int j, Referee::Mapping::Transformation correction)
+            {
+                __correctionsMatrix[i][j] = correction;
+            }
+
 
             /**
              * @brief Getter of the transformation matrix between two point clouds
@@ -968,6 +976,11 @@ namespace Referee::Mapping
             Referee::Mapping::Transformation GetTransformation(int i, int j)
             {
                 return __mappingMatrix[i][j];
+            }
+
+            Referee::Mapping::Transformation GetCorrection(int i, int j)
+            {
+                return __correctionsMatrix[i][j];
             }
 
 
@@ -1157,6 +1170,11 @@ namespace Referee::Mapping
              * @brief Mapping matrix between the point clouds, where each element is the transformation matrix between two point clouds
              */
             std::vector<std::vector<Referee::Mapping::Transformation>> __mappingMatrix;
+
+            /**
+             * @brief Matrix of corrections to be applied to the transformations between point clouds, where each element is the correction transformation matrix between two point clouds
+             */
+            std::vector<std::vector<Referee::Mapping::Transformation>> __correctionsMatrix;
 
             /**
              * @brief List of scans (point clouds with associated poses)
