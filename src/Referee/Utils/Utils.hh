@@ -251,6 +251,14 @@ namespace Referee
              * @param k Nearest neighbors to use for normal calculation
              */
             void CalculateNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, pcl::PointCloud<pcl::Normal>::Ptr normals, int k);
+
+            /**
+             * @brief Calculate the normals of a point cloud
+             * 
+             * @param cloud Point cloud to calculate normals for
+             * @param k Nearest neighbors to use for normal calculation
+             */
+            void CalculateNormals(pcl::PointCloud<pcl::PointNormal>::Ptr cloud, int k);
         } // NormalCalculation
     
 

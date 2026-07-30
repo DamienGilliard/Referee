@@ -209,6 +209,25 @@ namespace Referee::Utils
             normalEstimation.compute(*normals);
             std::cout << "Normals calculated." << std::endl;
         }
+
+        void CalculateNormals(pcl::PointCloud<pcl::PointNormal>::Ptr cloud, int k)
+        {
+            std::cout << "Calculating normals..." << std::endl;
+            pcl::NormalEstimation<pcl::PointNormal, pcl::Normal> normalEstimation;
+            normalEstimation.setInputCloud(cloud);
+            pcl::search::KdTree<pcl::PointNormal>::Ptr tree(new pcl::search::KdTree<pcl::PointNormal>());
+            normalEstimation.setSearchMethod(tree);
+            normalEstimation.setKSearch(k);
+            pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>());
+            normalEstimation.compute(*normals);
+            for (size_t i = 0; i < cloud->size(); ++i)
+            {
+                cloud->points[i].normal_x = normals->points[i].normal_x;
+                cloud->points[i].normal_y = normals->points[i].normal_y;
+                cloud->points[i].normal_z = normals->points[i].normal_z;
+            }
+            std::cout << "Normals calculated." << std::endl;
+        }
     }
 
 
