@@ -157,7 +157,26 @@ namespace Referee
                 twist(5) = angleAxis.angle() * angleAxis.axis().z();
                 return twist;
             }
-        
+
+
+            template <typename Derived>
+            Eigen::Matrix<typename Derived::Scalar, 7, 1> transformMatrixToTranslationAndQuaternion(const Eigen::MatrixBase<Derived>& transform)
+            {
+                using T = typename Derived::Scalar;
+                Eigen::Matrix<T, 7, 1> result;
+                // Extract translation
+                result(4) = transform(0, 3);
+                result(5) = transform(1, 3);
+                result(6) = transform(2, 3);
+                // Extract rotation
+                Eigen::Matrix<T, 3, 3> rotationMatrix = transform.template block<3, 3>(0, 0);
+                Eigen::Quaternion<T> quaternion(rotationMatrix);
+                result(3) = quaternion.w();
+                result(2) = quaternion.z();
+                result(1) = quaternion.y();
+                result(0) = quaternion.x();
+                return result;
+            }
         } // Conversions
 
         namespace FileIterators
