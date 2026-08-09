@@ -16,3 +16,5 @@
 #include "Referee/Mapping/Mapping.hh"
 #include "Referee/Probability/Probability.hh"
 #include "Referee/Raster/Raster.hh"
+#include "Referee/Evaluations/Evaluations.hh"
+#include "Referee/Multithreading/Multithreading.hh"
