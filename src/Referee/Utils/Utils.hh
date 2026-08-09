@@ -96,31 +96,42 @@ namespace Referee
                                          Referee::Utils::CoordinateSystem::CoordinateSystem coordSys = Referee::Utils::CoordinateSystem::CoordinateSystem::LV95);
         
             /**
-             * @brief Convert a pose represented as a 6D vector (x, y, z, qx, qy, qz, qw) to a 4x4 transformation matrix
-             * @param poseVector Pointer to a pose represented as a 6D vector (x, y, z, qx, qy, qz, qw)
+             * @brief Convert a pose represented as a 7D vector (qx, qy, qz, qw, x, y, z) to a 4x4 transformation matrix
+             * @param poseVector Pointer to a pose represented as a 7D vector (qx, qy, qz, qw, x, y, z)
              * @return Eigen::Matrix<T, 4, 4> Transformation matrix corresponding to the input pose vector
              */
             template <typename Derived>
             Eigen::Matrix<typename Derived::Scalar, 4, 4> poseAsVectorToTransformationMatrix(const Eigen::MatrixBase<Derived>& poseVector)
             {
                 using T = typename Derived::Scalar;
-                Eigen::Matrix<T, 4, 4> translationMatrix = Eigen::Matrix<T, 4, 4>::Identity();
-                // Extract translation
-                translationMatrix(0, 3) = poseVector(0);
-                translationMatrix(1, 3) = poseVector(1);
-                translationMatrix(2, 3) = poseVector(2);
-                // Extract rotation
-                const T angle = poseVector.template tail<3>().norm();
-                if (angle < T(1e-8))
+                Eigen::Matrix<T, 4, 4> transformationMatrix = Eigen::Matrix<T, 4, 4>::Identity();
+
+                // Translation.
+                if (poseVector.size() == 6)
                 {
-                    // No rotation, return the transformation matrix with only translation
-                    return translationMatrix;
+                    transformationMatrix(0, 3) = poseVector(3);
+                    transformationMatrix(1, 3) = poseVector(4);
+                    transformationMatrix(2, 3) = poseVector(5);
+                    // Rotation from angle-axis vector (rx, ry, rz), robust at small angles.
+                    T angleAxis[3] = {poseVector(0), poseVector(1), poseVector(2)};
+                    Eigen::Matrix<T, 3, 3> R;
+                    ceres::AngleAxisToRotationMatrix(angleAxis, R.data());
+                    transformationMatrix.template block<3, 3>(0, 0) = R;
                 }
-                const Eigen::Matrix<T, 3, 1> axis = poseVector.template tail<3>() / angle;
-                const Eigen::Matrix<T, 3, 3> rotationMatrix = Eigen::AngleAxis<T>(angle, axis).toRotationMatrix();
-                Eigen::Matrix<T, 4, 4> rotationMatrix4d = Eigen::Matrix<T, 4, 4>::Identity();
-                rotationMatrix4d.template block<3, 3>(0, 0) = rotationMatrix;
-                Eigen::Matrix<T, 4, 4> transformationMatrix = translationMatrix * rotationMatrix4d;
+                else if (poseVector.size() == 7)
+                {
+                    // Rotation from quaternion (qx, qy, qz, qw).
+                    Eigen::Quaternion<T> q(poseVector(3), poseVector(0), poseVector(1), poseVector(2));
+                    transformationMatrix.template block<3, 3>(0, 0) = q.toRotationMatrix();
+                    transformationMatrix(0, 3) = poseVector(4);
+                    transformationMatrix(1, 3) = poseVector(5);
+                    transformationMatrix(2, 3) = poseVector(6);
+                }
+                else
+                {
+                    throw std::invalid_argument("Pose vector must have 7 elements (qx, qy, qz, qw, x, y, z) or 6 elements (rx, ry, rz, x, y, z)");
+                }
+
                 return transformationMatrix;
             }
 
