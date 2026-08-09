@@ -699,6 +699,20 @@ namespace Referee::Mapping
                 ceres::CostFunction* costFunction = Referee::Mapping::TransformationError::Create(
                     transformation,
                     kLoopTranslationSigmaM,
+                    kLoopRotationSigmaRad);
+                std::cout << "[DEBUG] getting indexes for parameter blocks for edge " << fromIndex << " -> " << toIndex << std::endl;
+                auto fromIt = scanIndexToParamBlock.find(fromIndex);
+                auto toIt = scanIndexToParamBlock.find(toIndex);
+                std::cout << "[DEBUG] Adding residual block for edge " << fromIndex << " -> " << toIndex << std::endl;
+                if (fromIt == scanIndexToParamBlock.end() || toIt == scanIndexToParamBlock.end() ||
+                    fromIt->second == nullptr || toIt->second == nullptr)
+                {
+                    std::cerr << "[ERROR] Missing parameter block for loop edge " << fromIndex << " -> " << toIndex << std::endl;
+                    continue;
+                }
+                std::cout << "[DEBUG] Adding residual block for edge " << fromIndex << " -> " << toIndex << std::endl;
+                problem.AddResidualBlock(costFunction, 
+                                         new ceres::HuberLoss(1.0),
                                          fromIt->second,
                                          toIt->second);
             }
@@ -722,20 +736,6 @@ namespace Referee::Mapping
                 frontIt->second,
                 backIt->second
             );
-                auto toIt = scanIndexToParamBlock.find(toIndex);
-                std::cout << "[DEBUG] Adding residual block for edge " << fromIndex << " -> " << toIndex << std::endl;
-                if (fromIt == scanIndexToParamBlock.end() || toIt == scanIndexToParamBlock.end() ||
-                    fromIt->second == nullptr || toIt->second == nullptr)
-                {
-                    std::cerr << "[ERROR] Missing parameter block for loop edge " << fromIndex << " -> " << toIndex << std::endl;
-                    continue;
-                }
-                std::cout << "[DEBUG] Adding residual block for edge " << fromIndex << " -> " << toIndex << std::endl;
-                problem.AddResidualBlock(costFunction, 
-                                         new ceres::HuberLoss(1.0),
-                                         scanIndexToParamBlock[fromIndex], 
-                                         scanIndexToParamBlock[toIndex]);
-            }
             ceres::Solver::Options options;
             options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
             options.minimizer_progress_to_stdout = true;
@@ -752,7 +752,7 @@ namespace Referee::Mapping
                           << " -> " << loopBack << ". Skipping update." << std::endl;
                 // cleanupPoseBuffers();
                 continue;
-            }
+            } 
 
             std::vector<std::pair<int, Eigen::Matrix4d>> acceptedUpdates;
             bool acceptLoopUpdate = true;
@@ -760,7 +760,6 @@ namespace Referee::Mapping
             {
                 int scanIdx = static_cast<int>(loop[i]);
                 auto paramIt = scanIndexToParamBlock.find(scanIdx);
-                Eigen::Matrix4d initialPoseTransform = this->GetScan(scanIdx).GetPose().ToTransformationMatrix();
                 if (paramIt == scanIndexToParamBlock.end() || paramIt->second == nullptr)
                 {
                     acceptLoopUpdate = false;
