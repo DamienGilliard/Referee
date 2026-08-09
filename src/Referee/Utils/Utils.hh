@@ -317,45 +317,6 @@ namespace Referee
              * @return std::vector<double> Vector containing the angles opposite to sides A, B, and C (in radians)
              */
             std::vector<double> SolveAlKashi(Eigen::Vector3d sideA, Eigen::Vector3d sideB, Eigen::Vector3d sideC);
-        }
-        
-
-        namespace Multithreading
-        {
-            void ComputeTransformationInThread(int sourcePointCloudFileIndex,
-                            int targetPointCloudFileIndex,
-                            std::string sourcePointCloudFile,
-                            std::string targetPointCloudFile,
-                            double voxelSize,
-                            Referee::Mapping::MappingMatrix& mappingMatrix,
-                            std::mutex& mutex)
-            {
-                pcl::PointCloud<pcl::PointNormal>::Ptr sourceCloud(new pcl::PointCloud<pcl::PointNormal>());
-                pcl::PointCloud<pcl::PointNormal>::Ptr targetCloud(new pcl::PointCloud<pcl::PointNormal>());
-                if (pcl::io::loadPLYFile(sourcePointCloudFile, *sourceCloud) == -1)
-                {
-                    std::cerr << "Failed to load source PLY file: " << sourcePointCloudFile << std::endl;
-                    return;
-                }
-                if (pcl::io::loadPLYFile(targetPointCloudFile, *targetCloud) == -1)
-                {
-                    std::cerr << "Failed to load target PLY file: " << targetPointCloudFile << std::endl;
-                    return;
-                }
-
-                Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(sourceCloud, voxelSize);
-                Referee::Utils::Filtering::VoxelizePointCloud<pcl::PointNormal>(targetCloud, voxelSize);
-
-                std::pair<Eigen::Matrix4d, float> transformationMatrixAndScore = Referee::Mapping::ComputePairwiseTransformation(sourceCloud,
-                                                                                                    targetCloud,
-                                                                                                    Referee::Mapping::TransformationComputationMethod::GlobalMatch);
-                Referee::Mapping::Transformation transformation(transformationMatrixAndScore.first, nullptr, nullptr);
-
-                std::lock_guard<std::mutex> lock(mutex);
-                mappingMatrix.GetGraph().SetWeight(sourcePointCloudFileIndex, targetPointCloudFileIndex, -transformationMatrixAndScore.second);
-                mappingMatrix.SetTransformation(sourcePointCloudFileIndex, targetPointCloudFileIndex, transformation.GetInverse());
-                mappingMatrix.SetTransformation(targetPointCloudFileIndex, sourcePointCloudFileIndex, transformation);
-            }
-        }
+        }      
     } // Utils
 }
