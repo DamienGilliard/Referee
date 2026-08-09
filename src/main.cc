@@ -95,12 +95,14 @@ int main()
 
             std::cout << "Computing transformation between point cloud " << i << " and point cloud " << neighborIndex << std::endl;
 
-            threads.emplace_back(ComputeTransformationInThread,
+            threads.emplace_back(Referee::Utils::Multithreading::ComputeTransformationInThread,
                                  i,
                                  neighborIndex,
-                                 scans,
+                                 plyFileNames[i],
+                                 plyFileNames[neighborIndex],
                                  0.01,
-                                 std::ref(mappingMatrix));
+                                 std::ref(mappingMatrix),
+                                 std::ref(mutex));
         }
         // Wait for all threads in this batch to finish
         for (auto& thread : threads)
