@@ -1,5 +1,7 @@
 #include "Mapping.hh"
 
+#include <set>
+
 namespace Referee::Mapping
 {
     void Scan::TransformScanPose(Eigen::Matrix4d transformation)
@@ -531,21 +533,84 @@ namespace Referee::Mapping
     std::vector<std::pair<int, Referee::Mapping::Pose>> MappingMatrix::ComputeLoopClosures()
     {
         std::vector<std::pair<int, Referee::Mapping::Pose>> optimizedPoses;
+        const double kMaxAcceptedLoopWeight = -4.0;
+        const double kLoopTranslationSigmaM = 1.0;
+        const double kLoopRotationSigmaRad = 0.05;
+        const double kPriorSqrtWeight = 0.5;
+
+        // The edge that closes the loop (ie outside of the mst) is (correctionLoop.front(), correctionLoop.back())
         std::vector<std::vector<long unsigned int>> correctionLoops = this->GetGraph().GetCorrectionLoops();
+        std::sort(correctionLoops.begin(), correctionLoops.end(), [](const auto& a, const auto& b){return a.size() < b.size();});
+
         for(const std::vector<long unsigned int>& loop : correctionLoops)
         {
+            if (loop.size() < 2)
+            {
+                continue;
+            }
+
+            long unsigned int closestVertexToRoot = this->GetGraph().GetClosestVertexToRoot(loop);
+            const int loopFront = static_cast<int>(loop.front());
+            const int loopBack  = static_cast<int>(loop.back());
+            const double weight = this->GetGraph().GetWeight(loopFront, loopBack);
+            if(weight >= kMaxAcceptedLoopWeight)
+            {
+                std::cout << "[DEBUG] Skipping loop closure between " << loopFront << " and " << loopBack << " because the weight is too high: " << weight << std::endl;
+                continue;
+            }
+            bool validPath = true;
+
+            Eigen::Matrix4d TPathFrontToBack = Eigen::Matrix4d::Identity();;
+
+            for (int i = 1; i < static_cast<int>(loop.size()); ++i)
+            {
+                const int from = static_cast<int>(loop[i - 1]);
+                const int to   = static_cast<int>(loop[i]);
+
+                const Eigen::Matrix4d& Tij = this->__mappingMatrix[from][to].GetTransformationMatrix();
+                if (!Tij.allFinite())
+                {
+                    std::cerr << "[ERROR] Invalid MST path edge transform " << from << " -> " << to << std::endl;
+                    validPath = false;
+                    break;
+                }
+                TPathFrontToBack = TPathFrontToBack * Tij;
+            }
+
+            const Eigen::Matrix4d& TFrontToBack = this->__mappingMatrix[loopFront][loopBack].GetTransformationMatrix();
+            if (!validPath || !TFrontToBack.allFinite())
+            {
+                std::cerr << "[ERROR] Invalid loop closure transforms for loop front/back "
+                        << loopFront << " <-> " << loopBack << std::endl;
+                continue;
+            }
+
+            const Eigen::Matrix4d E_loop = TPathFrontToBack.inverse() * TFrontToBack;
+            const Eigen::Matrix<double, 6, 1> xi_loop = Referee::Utils::Conversions::transformMatrixToTwist(E_loop);
+
+            std::cout << "[DEBUG] Loop closure from " << loopFront << " to " << loopBack << std::endl;
+            std::cout << "[DEBUG] Error transformation matrix: \n" << E_loop << std::endl;
+            std::cout << "[DEBUG] Error twist vector: " << xi_loop.transpose() << std::endl;
+            const double transErr = xi_loop.head<3>().norm();
+            const double rotErr   = xi_loop.tail<3>().norm();
+            std::cout << "[DEBUG] Loop " << loopFront << " -> " << loopBack
+                    << " | transErr=" << transErr
+                    << " rotErr(rad)=" << rotErr << std::endl;
+
             ceres::Problem problem;
             std::vector<double*> posesAsVectors;
 
             // We first set the initial poses into the ceres problem (poses that will be optimized)
             std::unordered_map<int, double*> scanIndexToParamBlock;
+            bool allocationFailed = false;
             for(int i = 0; i < loop.size(); i++)
             {
                 double *poseAsVector = new double[6];
                 if (!poseAsVector) 
                 {
                     std::cerr << "[ERROR] Failed to allocate poseAsVector for index " << i << std::endl;
-                    continue;
+                    allocationFailed = true;
+                    break;
                 }
                 Eigen::Matrix4d poseTransform = this->GetScan(loop[i]).GetPose().ToTransformationMatrix();
                 Eigen::Matrix<double, 6, 1> poseVector = Referee::Utils::Conversions::transformMatrixToTwist(poseTransform);
@@ -559,17 +624,65 @@ namespace Referee::Mapping
                 posesAsVectors.push_back(poseAsVector);
                 scanIndexToParamBlock[loop[i]] = poseAsVector;
                 problem.AddParameterBlock(poseAsVector, 6);
-                
-                if (i == 0)
+                                
+                std::cout << "[DEBUG] Added parameter block for scan " << loop[i] << " with initial pose: "
+                          << poseVector.transpose() << std::endl;
+
+                if (loop[i] == closestVertexToRoot)
                 {
                     problem.SetParameterBlockConstant(poseAsVector); // fix the first pose to anchor the loop
                 }
             }
-            // We then set the constraints (in our case transformation measurements)
-            for(int i = 0; i < loop.size(); i++)
+
+            auto cleanupPoseBuffers = [&scanIndexToParamBlock]()
             {
-                int fromIndex = loop[i];
-                int toIndex = loop[(i + 1) % loop.size()]; // next vertex in the loop, wrap around at the end
+                for (auto& kv : scanIndexToParamBlock)
+                {
+                    delete[] kv.second;
+                }
+            };
+
+            if (allocationFailed)
+            {
+                cleanupPoseBuffers();
+                continue;
+            }
+
+            // Soft prior: keep each loop pose close to its pre-loop value.
+            // This limits over-corrections when one closure edge is unreliable.
+            for (int i = 0; i < static_cast<int>(loop.size()); ++i)
+            {
+                const int scanIdx = static_cast<int>(loop[i]);
+
+                if (scanIdx == static_cast<int>(closestVertexToRoot))
+                {
+                    continue;
+                }
+
+                const Eigen::Matrix4d referencePose =
+                    this->GetScan(scanIdx).GetPose().ToTransformationMatrix();
+
+                ceres::CostFunction* priorCost =
+                    Referee::Mapping::PosePriorError::Create(referencePose, 1.0 / kPriorSqrtWeight, 1.0 / kPriorSqrtWeight);
+
+                auto paramIt = scanIndexToParamBlock.find(scanIdx);
+                if (paramIt == scanIndexToParamBlock.end() || paramIt->second == nullptr)
+                {
+                    std::cerr << "[ERROR] Missing parameter block for prior at scan " << scanIdx << std::endl;
+                    continue;
+                }
+
+                problem.AddResidualBlock(
+                    priorCost,
+                    nullptr,
+                    paramIt->second);
+            }
+
+            // We then set the constraints (in our case transformation measurements)
+            for(int i = 0; i < loop.size()-1; i++)
+            {
+                int fromIndex = loop[i]; // current vertex in the loop
+                int toIndex = loop[i + 1]; // next vertex in the loop, wrap around at the end
                 if (!this->__mappingMatrix[fromIndex][toIndex].GetTransformationMatrix().allFinite()) 
                 {
                     std::cerr << "[ERROR] Invalid transformation matrix between vertices " 
@@ -578,11 +691,46 @@ namespace Referee::Mapping
                     std::cerr << "Transformation matrix: \n" << this->__mappingMatrix[fromIndex][toIndex].GetTransformationMatrix()<< std::endl;
                     continue;
                 }
+                std::cout << "[DEBUG] Adding constraint between " << fromIndex << " and " << toIndex << std::endl;
                 const Eigen::Matrix4d& transformation = this->__mappingMatrix[fromIndex][toIndex].GetTransformationMatrix();
-                const Eigen::Matrix4d& registredPose = transformation * this->GetScan(fromIndex).GetPose().ToTransformationMatrix();
-                const Eigen::Matrix4d& poseDifference = registredPose.inverse() * this->GetScan(toIndex).GetPose().ToTransformationMatrix();
-                ceres::CostFunction* costFunction = Referee::Mapping::TransformationError::Create(poseDifference);
-    
+                // const Eigen::Matrix4d& registredPose = transformation * this->GetScan(fromIndex).GetPose().ToTransformationMatrix();
+                // const Eigen::Matrix4d& poseDifference = registredPose.inverse() * this->GetScan(toIndex).GetPose().ToTransformationMatrix();
+                std::cout << "[DEBUG] Transformation matrix between " << fromIndex << " and " << toIndex << ": \n" << transformation << std::endl;
+                ceres::CostFunction* costFunction = Referee::Mapping::TransformationError::Create(
+                    transformation,
+                    kLoopTranslationSigmaM,
+                                         fromIt->second,
+                                         toIt->second);
+            }
+
+            auto frontIt = scanIndexToParamBlock.find(loopFront);
+            auto backIt = scanIndexToParamBlock.find(loopBack);
+            if (frontIt == scanIndexToParamBlock.end() || backIt == scanIndexToParamBlock.end() ||
+                frontIt->second == nullptr || backIt->second == nullptr)
+            {
+                std::cerr << "[ERROR] Missing parameter block for loop closure edge " << loopFront << " -> " << loopBack << std::endl;
+                cleanupPoseBuffers();
+                continue;
+            }
+            ceres::CostFunction* loopClosureCost = Referee::Mapping::TransformationError::Create(
+                TFrontToBack,
+                kLoopTranslationSigmaM,
+                kLoopRotationSigmaRad);
+            problem.AddResidualBlock(
+                loopClosureCost,
+                new ceres::HuberLoss(1.0),
+                frontIt->second,
+                backIt->second
+            );
+                auto toIt = scanIndexToParamBlock.find(toIndex);
+                std::cout << "[DEBUG] Adding residual block for edge " << fromIndex << " -> " << toIndex << std::endl;
+                if (fromIt == scanIndexToParamBlock.end() || toIt == scanIndexToParamBlock.end() ||
+                    fromIt->second == nullptr || toIt->second == nullptr)
+                {
+                    std::cerr << "[ERROR] Missing parameter block for loop edge " << fromIndex << " -> " << toIndex << std::endl;
+                    continue;
+                }
+                std::cout << "[DEBUG] Adding residual block for edge " << fromIndex << " -> " << toIndex << std::endl;
                 problem.AddResidualBlock(costFunction, 
                                          new ceres::HuberLoss(1.0),
                                          scanIndexToParamBlock[fromIndex], 
@@ -591,20 +739,75 @@ namespace Referee::Mapping
             ceres::Solver::Options options;
             options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
             options.minimizer_progress_to_stdout = true;
-            options.function_tolerance = 1e-6; // Adjust tolerance
-            options.max_num_iterations = 100;
+            options.function_tolerance = 1e-15; 
+            options.gradient_tolerance = 1e-15;
+            options.parameter_tolerance = 1e-15; 
+            options.max_num_iterations = 1000;
             ceres::Solver::Summary summary;
             ceres::Solve(options, &problem, &summary);
             std::cout << summary.FullReport() << std::endl;
+            if (!summary.IsSolutionUsable() || summary.termination_type == ceres::FAILURE)
+            {
+                std::cerr << "[ERROR] Unusable loop-closure solve for loop " << loopFront
+                          << " -> " << loopBack << ". Skipping update." << std::endl;
+                // cleanupPoseBuffers();
+                continue;
+            }
+
+            std::vector<std::pair<int, Eigen::Matrix4d>> acceptedUpdates;
+            bool acceptLoopUpdate = true;
             for (int i = 0; i < posesAsVectors.size(); i++)
             {
-                int scanIdx = loop[i];
+                int scanIdx = static_cast<int>(loop[i]);
+                auto paramIt = scanIndexToParamBlock.find(scanIdx);
+                Eigen::Matrix4d initialPoseTransform = this->GetScan(scanIdx).GetPose().ToTransformationMatrix();
+                if (paramIt == scanIndexToParamBlock.end() || paramIt->second == nullptr)
+                {
+                    acceptLoopUpdate = false;
+                    break;
+                }
+
                 Eigen::Map<Eigen::Matrix<double, 6, 1>> poseVec(scanIndexToParamBlock[scanIdx]);
+                Eigen::Matrix4d initialPoseTransform = this->GetScan(scanIdx).GetPose().ToTransformationMatrix();
                 Eigen::Matrix4d optimizedPoseTransform = Referee::Utils::Conversions::poseAsVectorToTransformationMatrix(poseVec);
-                Referee::Mapping::Pose optimizedPose(optimizedPoseTransform);
-                optimizedPoses.push_back(std::make_pair(scanIdx, optimizedPose));
-                delete[] scanIndexToParamBlock[scanIdx];
+
+                if (!optimizedPoseTransform.allFinite())
+                {
+                    std::cerr << "[ERROR] Non-finite optimized pose for scan " << scanIdx << std::endl;
+                    acceptLoopUpdate = false;
+                    break;
+                }
+
+                const Eigen::Matrix4d correctionTransform = optimizedPoseTransform * initialPoseTransform.inverse();
+                const Eigen::Matrix<double, 6, 1> correctionTwist =
+                    Referee::Utils::Conversions::transformMatrixToTwist(correctionTransform);
+                const double correctionTranslation = correctionTwist.head<3>().norm();
+                const double correctionRotation = correctionTwist.tail<3>().norm();
+
+                // if (correctionTranslation > kMaxPerPoseTranslationUpdate ||
+                //     correctionRotation > kMaxPerPoseRotationUpdateRad)
+                // {
+                //     std::cerr << "[ERROR] Rejecting loop update due to large per-pose correction on scan "
+                //               << scanIdx << " (dT=" << correctionTranslation
+                //               << ", dR=" << correctionRotation << ")" << std::endl;
+                //     acceptLoopUpdate = false;
+                //     break;
+                // }
+
+                acceptedUpdates.push_back(std::make_pair(scanIdx, optimizedPoseTransform));
             }
+
+            if (acceptLoopUpdate)
+            {
+                for (const auto& update : acceptedUpdates)
+                {
+                    Referee::Mapping::Pose optimizedPose(update.second);
+                    this->GetScan(update.first).GetPose() = optimizedPose;
+                    optimizedPoses.push_back(std::make_pair(update.first, optimizedPose));
+                }
+            }
+
+            cleanupPoseBuffers();
         }
         return optimizedPoses;
     }
