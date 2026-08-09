@@ -103,7 +103,16 @@ namespace Referee::Utils
                     {
                         {"type", "writers.las"},
                         {"filename", outputFilePath},
-                        {"a_srs", "EPSG:2056"}
+                        {"a_srs", "EPSG:2056"},
+                        // Default LAS scale (0.01 m) rounds coordinates to the nearest centimeter,
+                        // visibly coarser than TLS point precision; offset must stay near the actual
+                        // coordinates so scale_x/y/z * int32 range doesn't overflow at EPSG:2056 magnitudes.
+                        {"scale_x", "0.0001"},
+                        {"scale_y", "0.0001"},
+                        {"scale_z", "0.0001"},
+                        {"offset_x", std::to_string(lon)},
+                        {"offset_y", std::to_string(lat)},
+                        {"offset_z", std::to_string(alt)}
                     }
                 }}
             };
