@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <sstream>
 #include <algorithm>
+#include <math.h>
 
 #include <pcl/point_types.h>
 #include <pcl/filters/approximate_voxel_grid.h>
@@ -16,7 +17,10 @@
 #include <pcl/io/ply_io.h>
 #include <pdal/PipelineManager.hpp>
 #include <pdal/StageFactory.hpp>
+#include "ceres/rotation.h"
+#include "ceres/jet.h"
 #include "../../3rd_party/json/single_include/nlohmann/json.hpp"
+#include <sophus/se3.hpp>
 
 namespace Referee 
 {
@@ -78,7 +82,7 @@ namespace Referee
             /**
              * @brief Create a LAS file from a point cloud
              * @param cloud Point cloud to convert
-             * @param lon Longitude of the point cloud
+             * @param lon Longitude of the point cloud1
              * @param lat Latitude of the point cloud
              * @param alt Altitude of the point cloud
              * @param outputFilePath Path to the output LAS file
@@ -90,6 +94,89 @@ namespace Referee
                                          double alt, 
                                          const std::string& outputFilePath,
                                          Referee::Utils::CoordinateSystem::CoordinateSystem coordSys = Referee::Utils::CoordinateSystem::CoordinateSystem::LV95);
+        
+            /**
+             * @brief Convert a pose represented as a 7D vector (qx, qy, qz, qw, x, y, z) to a 4x4 transformation matrix
+             * @param poseVector Pointer to a pose represented as a 7D vector (qx, qy, qz, qw, x, y, z)
+             * @return Eigen::Matrix<T, 4, 4> Transformation matrix corresponding to the input pose vector
+             */
+            template <typename Derived>
+            Eigen::Matrix<typename Derived::Scalar, 4, 4> poseAsVectorToTransformationMatrix(const Eigen::MatrixBase<Derived>& poseVector)
+            {
+                using T = typename Derived::Scalar;
+                Eigen::Matrix<T, 4, 4> transformationMatrix = Eigen::Matrix<T, 4, 4>::Identity();
+
+                // Translation.
+                if (poseVector.size() == 6)
+                {
+                    transformationMatrix(0, 3) = poseVector(3);
+                    transformationMatrix(1, 3) = poseVector(4);
+                    transformationMatrix(2, 3) = poseVector(5);
+                    // Rotation from angle-axis vector (rx, ry, rz), robust at small angles.
+                    T angleAxis[3] = {poseVector(0), poseVector(1), poseVector(2)};
+                    Eigen::Matrix<T, 3, 3> R;
+                    ceres::AngleAxisToRotationMatrix(angleAxis, R.data());
+                    transformationMatrix.template block<3, 3>(0, 0) = R;
+                }
+                else if (poseVector.size() == 7)
+                {
+                    // Rotation from quaternion (qx, qy, qz, qw).
+                    Eigen::Quaternion<T> q(poseVector(3), poseVector(0), poseVector(1), poseVector(2));
+                    transformationMatrix.template block<3, 3>(0, 0) = q.toRotationMatrix();
+                    transformationMatrix(0, 3) = poseVector(4);
+                    transformationMatrix(1, 3) = poseVector(5);
+                    transformationMatrix(2, 3) = poseVector(6);
+                }
+                else
+                {
+                    throw std::invalid_argument("Pose vector must have 7 elements (qx, qy, qz, qw, x, y, z) or 6 elements (rx, ry, rz, x, y, z)");
+                }
+
+                return transformationMatrix;
+            }
+
+            /**
+             * @brief Convert a transformation matrix to a twist (6D vector: 3D translation + 3D rotation)
+             * @param transform Transformation matrix to convert
+             * @return Eigen::Matrix<T, 6, 1> Twist corresponding to the input transformation matrix
+             */
+            template <typename Derived>
+            Eigen::Matrix<typename Derived::Scalar, 6, 1> transformMatrixToTwist(const Eigen::MatrixBase<Derived>& transform)
+            {
+                using T = typename Derived::Scalar;
+                Eigen::Matrix<T, 6, 1> twist;
+                // Extract translation
+                twist(0) = transform(0, 3);
+                twist(1) = transform(1, 3);
+                twist(2) = transform(2, 3);
+                // Extract rotation
+                Eigen::Matrix<T, 3, 3> rotationMatrix = transform.template block<3, 3>(0, 0);
+                Eigen::AngleAxis<T> angleAxis(rotationMatrix);
+                twist(3) = angleAxis.angle() * angleAxis.axis().x();
+                twist(4) = angleAxis.angle() * angleAxis.axis().y();
+                twist(5) = angleAxis.angle() * angleAxis.axis().z();
+                return twist;
+            }
+
+
+            template <typename Derived>
+            Eigen::Matrix<typename Derived::Scalar, 7, 1> transformMatrixToTranslationAndQuaternion(const Eigen::MatrixBase<Derived>& transform)
+            {
+                using T = typename Derived::Scalar;
+                Eigen::Matrix<T, 7, 1> result;
+                // Extract translation
+                result(4) = transform(0, 3);
+                result(5) = transform(1, 3);
+                result(6) = transform(2, 3);
+                // Extract rotation
+                Eigen::Matrix<T, 3, 3> rotationMatrix = transform.template block<3, 3>(0, 0);
+                Eigen::Quaternion<T> quaternion(rotationMatrix);
+                result(3) = quaternion.w();
+                result(2) = quaternion.z();
+                result(1) = quaternion.y();
+                result(0) = quaternion.x();
+                return result;
+            }
         } // Conversions
 
         namespace FileIterators
@@ -195,6 +282,14 @@ namespace Referee
              * @param k Nearest neighbors to use for normal calculation
              */
             void CalculateNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, pcl::PointCloud<pcl::Normal>::Ptr normals, int k);
+
+            /**
+             * @brief Calculate the normals of a point cloud
+             * 
+             * @param cloud Point cloud to calculate normals for
+             * @param k Nearest neighbors to use for normal calculation
+             */
+            void CalculateNormals(pcl::PointCloud<pcl::PointNormal>::Ptr cloud, int k);
         } // NormalCalculation
     
 
@@ -222,6 +317,6 @@ namespace Referee
              * @return std::vector<double> Vector containing the angles opposite to sides A, B, and C (in radians)
              */
             std::vector<double> SolveAlKashi(Eigen::Vector3d sideA, Eigen::Vector3d sideB, Eigen::Vector3d sideC);
-        }
+        }      
     } // Utils
 }

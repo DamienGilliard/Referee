@@ -103,7 +103,16 @@ namespace Referee::Utils
                     {
                         {"type", "writers.las"},
                         {"filename", outputFilePath},
-                        {"a_srs", "EPSG:2056"}
+                        {"a_srs", "EPSG:2056"},
+                        // Default LAS scale (0.01 m) rounds coordinates to the nearest centimeter,
+                        // visibly coarser than TLS point precision; offset must stay near the actual
+                        // coordinates so scale_x/y/z * int32 range doesn't overflow at EPSG:2056 magnitudes.
+                        {"scale_x", "0.0001"},
+                        {"scale_y", "0.0001"},
+                        {"scale_z", "0.0001"},
+                        {"offset_x", std::to_string(lon)},
+                        {"offset_y", std::to_string(lat)},
+                        {"offset_z", std::to_string(alt)}
                     }
                 }}
             };
@@ -207,6 +216,25 @@ namespace Referee::Utils
             normalEstimation.setSearchMethod(tree);
             normalEstimation.setKSearch(k);
             normalEstimation.compute(*normals);
+            std::cout << "Normals calculated." << std::endl;
+        }
+
+        void CalculateNormals(pcl::PointCloud<pcl::PointNormal>::Ptr cloud, int k)
+        {
+            std::cout << "Calculating normals..." << std::endl;
+            pcl::NormalEstimation<pcl::PointNormal, pcl::Normal> normalEstimation;
+            normalEstimation.setInputCloud(cloud);
+            pcl::search::KdTree<pcl::PointNormal>::Ptr tree(new pcl::search::KdTree<pcl::PointNormal>());
+            normalEstimation.setSearchMethod(tree);
+            normalEstimation.setKSearch(k);
+            pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>());
+            normalEstimation.compute(*normals);
+            for (size_t i = 0; i < cloud->size(); ++i)
+            {
+                cloud->points[i].normal_x = normals->points[i].normal_x;
+                cloud->points[i].normal_y = normals->points[i].normal_y;
+                cloud->points[i].normal_z = normals->points[i].normal_z;
+            }
             std::cout << "Normals calculated." << std::endl;
         }
     }
